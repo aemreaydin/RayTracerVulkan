@@ -5,37 +5,37 @@ struct SQueueFamilyIndices
 {
 	// Contains no value until one is assigned. Can check if a value is assigned
 	// using hasValue()
-	std::optional<uint32_t> graphicsFamily;
-	std::optional<uint32_t> presentFamily;
-	bool isComplete()
+	std::optional<uint32_t> GraphicsFamily;
+	std::optional<uint32_t> PresentFamily;
+	[[nodiscard]] bool IsComplete() const
 	{
-		return graphicsFamily.has_value() && presentFamily.has_value();
+		return GraphicsFamily.has_value() && PresentFamily.has_value();
 	}
 };
 
 struct SSwapChainSupportDetails
 {
-	VkSurfaceCapabilitiesKHR surfaceCapabilities;
-	std::vector<VkSurfaceFormatKHR> surfaceFormats;
-	std::vector<VkPresentModeKHR> presentModes;
+	VkSurfaceCapabilitiesKHR SurfaceCapabilities = {};
+	std::vector<VkSurfaceFormatKHR> SurfaceFormats;
+	std::vector<VkPresentModeKHR> PresentModes;
 };
 
 class CSetupHelpers
 {
 public:
-	static std::vector<const char*> getRequiredExtensions();
-	static bool checkExtensionSupport(const char** extensionsRequired, 
-									  const uint32_t extensionsRequiredCount, 
+	static std::vector<const char*> GetRequiredExtensions();
+	static bool CheckExtensionSupport(const char** extensionsRequired, 
+									  uint32_t extensionsRequiredCount, 
 									  std::vector<VkExtensionProperties> supportedExtensions);
-	static bool checkDeviceExtensionsSupport(VkPhysicalDevice physicalDevice);
-	static bool checkValidationSupport();
-	static bool isDeviceSuitable(const VkPhysicalDevice physicalDevice,
-								 const VkSurfaceKHR surface);
-	static SQueueFamilyIndices findQueueFamilies(const VkPhysicalDevice device,
-												 const VkSurfaceKHR surface);
-	static SSwapChainSupportDetails querySwapChainSupport(VkPhysicalDevice physicalDevice, 
-														  VkSurfaceKHR surface);
-	static VkSurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats);
-	static VkPresentModeKHR chooseSwapPresentMode(const std::vector<VkPresentModeKHR>& availablePresentModes);
-	static VkExtent2D chooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities);
+	static bool CheckDeviceExtensionsSupport(const VkPhysicalDevice& physicalDevice);
+	static bool CheckValidationSupport();
+	static bool IsDeviceSuitable(const VkPhysicalDevice& physicalDevice,
+								 const VkSurfaceKHR& surface);
+	static SQueueFamilyIndices FindQueueFamilies(const VkPhysicalDevice& device,
+												 const VkSurfaceKHR& surface);
+	static SSwapChainSupportDetails QuerySwapChainSupport(const VkPhysicalDevice& physicalDevice, 
+														  const VkSurfaceKHR& surface);
+	static VkSurfaceFormatKHR ChooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats);
+	static VkPresentModeKHR ChooseSwapPresentMode(const std::vector<VkPresentModeKHR>& availablePresentModes);
+	static VkExtent2D ChooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities);
 };

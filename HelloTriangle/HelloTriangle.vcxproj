@@ -161,6 +161,7 @@
     <ClInclude Include="Common.h" />
     <ClInclude Include="DebugHelpers.h" />
     <ClInclude Include="SetupHelpers.h" />
+    <ClInclude Include="ShaderLoader.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

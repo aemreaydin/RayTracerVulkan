@@ -1,9 +1,9 @@
 #include "SetupHelpers.h"
 
-std::vector<const char*> CSetupHelpers::getRequiredExtensions()
+std::vector<const char*> CSetupHelpers::GetRequiredExtensions()
 {
 	uint32_t glfwExtensionCount = 0;
-	const char** glfwExtensions =
+	const auto glfwExtensions =
 		glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
 	std::vector<const char*> vecExtensions(glfwExtensions,
 										   glfwExtensions + glfwExtensionCount);
@@ -14,11 +14,11 @@ std::vector<const char*> CSetupHelpers::getRequiredExtensions()
 	return vecExtensions;
 }
 
-bool CSetupHelpers::checkExtensionSupport(const char** extensionsRequired, const uint32_t extensionsRequiredCount, std::vector<VkExtensionProperties> supportedExtensions)
+bool CSetupHelpers::CheckExtensionSupport(const char** extensionsRequired, const uint32_t extensionsRequiredCount, std::vector<VkExtensionProperties> supportedExtensions)
 {
-	for (int i = 0; i != extensionsRequiredCount; i++)
+	for (uint32_t i = 0; i != extensionsRequiredCount; i++)
 	{
-		const char* extension = extensionsRequired[i];
+		auto extension = extensionsRequired[i];
 		auto iter = std::find_if(
 			supportedExtensions.begin(), supportedExtensions.end(),
 			[&extension](const VkExtensionProperties& extensionProperty)
@@ -30,7 +30,7 @@ bool CSetupHelpers::checkExtensionSupport(const char** extensionsRequired, const
 	return true;
 }
 
-bool CSetupHelpers::checkDeviceExtensionsSupport(VkPhysicalDevice physicalDevice)
+bool CSetupHelpers::CheckDeviceExtensionsSupport(const VkPhysicalDevice& physicalDevice)
 {
 	uint32_t deviceExtensionCount = 0;
 	vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr,
@@ -49,7 +49,7 @@ bool CSetupHelpers::checkDeviceExtensionsSupport(VkPhysicalDevice physicalDevice
 	}
 	return requiredExtensions.empty();
 }
-bool CSetupHelpers::checkValidationSupport()
+bool CSetupHelpers::CheckValidationSupport()
 {
 	uint32_t layerCount;
 	vkEnumerateInstanceLayerProperties(&layerCount, nullptr);
@@ -68,32 +68,34 @@ bool CSetupHelpers::checkValidationSupport()
 	}
 	return true;
 }
-bool CSetupHelpers::isDeviceSuitable(const VkPhysicalDevice physicalDevice, const VkSurfaceKHR surface)
+bool CSetupHelpers::IsDeviceSuitable(const VkPhysicalDevice& physicalDevice, 
+									 const VkSurfaceKHR& surface)
 {
 	VkPhysicalDeviceProperties deviceProperties;
 	VkPhysicalDeviceFeatures deviceFeatures;
 	vkGetPhysicalDeviceProperties(physicalDevice, &deviceProperties);
 	vkGetPhysicalDeviceFeatures(physicalDevice, &deviceFeatures);
 	// Find if all queues have a value
-	SQueueFamilyIndices indices = findQueueFamilies(physicalDevice, surface);
-	// Check just for swapchain support for now
+	SQueueFamilyIndices indices = FindQueueFamilies(physicalDevice, surface);
+	// Check just for swap chain support for now
 	bool swapChainAdequate = false;
 	bool extensionsSupported =
-		CSetupHelpers::checkDeviceExtensionsSupport(physicalDevice);
+		CSetupHelpers::CheckDeviceExtensionsSupport(physicalDevice);
 	if (extensionsSupported)
 	{
 		SSwapChainSupportDetails details =
-			querySwapChainSupport(physicalDevice, surface);
+			QuerySwapChainSupport(physicalDevice, surface);
 		swapChainAdequate =
-			!details.surfaceFormats.empty() && !details.presentModes.empty();
+			!details.SurfaceFormats.empty() && !details.PresentModes.empty();
 	}
 	return deviceProperties.deviceType ==
 		VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU &&
-		deviceFeatures.geometryShader && indices.isComplete() &&
+		deviceFeatures.geometryShader && indices.IsComplete() &&
 		swapChainAdequate;
 }
 
-SQueueFamilyIndices CSetupHelpers::findQueueFamilies(const VkPhysicalDevice device, const VkSurfaceKHR surface)
+SQueueFamilyIndices CSetupHelpers::FindQueueFamilies(const VkPhysicalDevice& device,
+													 const VkSurfaceKHR& surface)
 {
 	SQueueFamilyIndices indices;
 
@@ -110,17 +112,17 @@ SQueueFamilyIndices CSetupHelpers::findQueueFamilies(const VkPhysicalDevice devi
 		if (queueFamily.queueCount > 0 &&
 			queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT)
 		{
-			indices.graphicsFamily = i;
+			indices.GraphicsFamily = i;
 		}
 
 		VkBool32 presentSupport;
 		vkGetPhysicalDeviceSurfaceSupportKHR(device, i, surface, &presentSupport);
 		if (queueFamily.queueCount > 0 && presentSupport)
 		{
-			indices.presentFamily = i;
+			indices.PresentFamily = i;
 		}
 
-		if (indices.isComplete())
+		if (indices.IsComplete())
 		{
 			break;
 		}
@@ -130,21 +132,22 @@ SQueueFamilyIndices CSetupHelpers::findQueueFamilies(const VkPhysicalDevice devi
 	return indices;
 }
 
-SSwapChainSupportDetails CSetupHelpers::querySwapChainSupport(VkPhysicalDevice physicalDevice, VkSurfaceKHR surface)
+SSwapChainSupportDetails CSetupHelpers::QuerySwapChainSupport(const VkPhysicalDevice& physicalDevice, 
+															  const VkSurfaceKHR& surface)
 {
 	SSwapChainSupportDetails details;
 
 	vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physicalDevice, surface,
-											  &details.surfaceCapabilities);
+											  &details.SurfaceCapabilities);
 
 	uint32_t formatCount = 0;
 	vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice, surface, &formatCount,
 										 nullptr);
 	if (formatCount != 0)
 	{
-		details.surfaceFormats.resize(formatCount);
+		details.SurfaceFormats.resize(formatCount);
 		vkGetPhysicalDeviceSurfaceFormatsKHR(
-			physicalDevice, surface, &formatCount, details.surfaceFormats.data());
+			physicalDevice, surface, &formatCount, details.SurfaceFormats.data());
 	}
 
 	uint32_t presentCount = 0;
@@ -152,17 +155,17 @@ SSwapChainSupportDetails CSetupHelpers::querySwapChainSupport(VkPhysicalDevice p
 											  &presentCount, nullptr);
 	if (presentCount != 0)
 	{
-		details.presentModes.resize(presentCount);
+		details.PresentModes.resize(presentCount);
 		vkGetPhysicalDeviceSurfacePresentModesKHR(
-			physicalDevice, surface, &presentCount, details.presentModes.data());
+			physicalDevice, surface, &presentCount, details.PresentModes.data());
 	}
 
 	return details;
 }
 
-VkSurfaceFormatKHR CSetupHelpers::chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats)
+VkSurfaceFormatKHR CSetupHelpers::ChooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats)
 {
-	auto iter = std::find_if(availableFormats.begin(), availableFormats.end(),
+	const auto iter = std::find_if(availableFormats.begin(), availableFormats.end(),
 							 [](const VkSurfaceFormatKHR& format)
 							 {
 								 return format.colorSpace ==
@@ -176,9 +179,9 @@ VkSurfaceFormatKHR CSetupHelpers::chooseSwapSurfaceFormat(const std::vector<VkSu
 	return availableFormats[0];
 }
 
-VkPresentModeKHR CSetupHelpers::chooseSwapPresentMode(const std::vector<VkPresentModeKHR>& availablePresentModes)
+VkPresentModeKHR CSetupHelpers::ChooseSwapPresentMode(const std::vector<VkPresentModeKHR>& availablePresentModes)
 {
-	auto iter =
+	const auto iter =
 		std::find_if(availablePresentModes.begin(), availablePresentModes.end(),
 					 [](const VkPresentModeKHR& presentMode)
 					 {
@@ -191,22 +194,19 @@ VkPresentModeKHR CSetupHelpers::chooseSwapPresentMode(const std::vector<VkPresen
 	return VK_PRESENT_MODE_FIFO_KHR;
 }
 
-VkExtent2D CSetupHelpers::chooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities)
+VkExtent2D CSetupHelpers::ChooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities)
 {
-	if (capabilities.currentExtent.width !=
-		std::numeric_limits<uint32_t>::max())
+	if (capabilities.currentExtent.width != std::numeric_limits<uint32_t>::max())
 	{
 		return capabilities.currentExtent;
 	}
-	else
-	{
-		VkExtent2D actualExtent = { WIDTH, HEIGHT };
-		actualExtent.width =
-			std::clamp(actualExtent.width, capabilities.minImageExtent.width,
-					   capabilities.maxImageExtent.width);
-		actualExtent.height =
-			std::clamp(actualExtent.height, capabilities.minImageExtent.height,
-					   capabilities.maxImageExtent.height);
-		return actualExtent;
-	}
+	
+	VkExtent2D actualExtent = { WIDTH, HEIGHT };
+	actualExtent.width =
+		std::clamp(actualExtent.width, capabilities.minImageExtent.width,
+				   capabilities.maxImageExtent.width);
+	actualExtent.height =
+		std::clamp(actualExtent.height, capabilities.minImageExtent.height,
+				   capabilities.maxImageExtent.height);
+	return actualExtent;	
 }

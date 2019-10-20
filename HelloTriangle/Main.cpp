@@ -1,6 +1,7 @@
 #include "DebugHelpers.h"
 #include "SetupHelpers.h"
-#include <limits>
+#include "ShaderLoader.h"
+#include <shaderc/shaderc.h>
 #include <map>
 
 
@@ -39,14 +40,17 @@ private:
 		createLogicalDevice();
 		createSwapChain();
 		createImageViews();
+		createGraphicsPipeline();
 	}
-	void mainLoop()
+	
+	void mainLoop() const
 	{
 		while (!glfwWindowShouldClose(pWindow))
 		{
 			glfwPollEvents();
 		}
 	}
+
 	void cleanup()
 	{
 		for (auto& imageView : swapChainImageViews)
@@ -58,7 +62,7 @@ private:
 
 		if (enableValidationLayers)
 		{
-			CDebugHelpers::DestroyDebugUtilsMessengerEXT(instance, debugMessenger,
+			CDebugHelpers::DestroyDebugUtilsMessengerExt(instance, debugMessenger,
 														 nullptr);
 		}
 		vkDestroySurfaceKHR(instance, surface, nullptr);
@@ -70,7 +74,7 @@ private:
 	void createInstance()
 	{
 		// Enable validation layers in Debug
-		if (enableValidationLayers && !CSetupHelpers::checkValidationSupport())
+		if (enableValidationLayers && !CSetupHelpers::CheckValidationSupport())
 		{
 			throw std::runtime_error(
 				"Validation layers requested, but not supported.");
@@ -84,7 +88,7 @@ private:
 		appInfo.engineVersion = VK_MAKE_VERSION(1, 0, 0);
 		appInfo.pEngineName = "Engine";
 
-		auto vecExtensions = CSetupHelpers::getRequiredExtensions();
+		auto vecExtensions = CSetupHelpers::GetRequiredExtensions();
 
 		uint32_t optionalExtensionCount = 0;
 		vkEnumerateInstanceExtensionProperties(nullptr, &optionalExtensionCount,
@@ -93,12 +97,14 @@ private:
 		vkEnumerateInstanceExtensionProperties(nullptr, &optionalExtensionCount,
 											   vecExtProperties.data());
 		// Check if all the required extensions are supported by Vulkan
-		bool isSupported = CSetupHelpers::checkExtensionSupport(
+		const auto isSupported = CSetupHelpers::CheckExtensionSupport(
 			vecExtensions.data(), static_cast<uint32_t>(vecExtensions.size()),
 			vecExtProperties);
-		isSupported
-			? std::cout << "All the extensions are supported" << std::endl
-			: throw std::runtime_error("Some extensions are not supported.");
+
+		if(!isSupported)
+		{
+			throw std::runtime_error("Extension Support Error.");
+		}
 
 		// Create the instance information before creating the instance
 		VkInstanceCreateInfo createInfo = {};
@@ -118,7 +124,7 @@ private:
 			createInfo.ppEnabledLayerNames = VALIDATION_LAYERS.data();
 
 			CDebugHelpers::PopulateDebugMessengerCreateInfo(debugCreateInfo);
-			createInfo.pNext = (VkDebugUtilsMessengerCreateInfoEXT*)&debugCreateInfo;
+			createInfo.pNext = reinterpret_cast<VkDebugUtilsMessengerCreateInfoEXT*>(&debugCreateInfo);
 		}
 		else
 		{
@@ -153,7 +159,7 @@ private:
 								   vecDevices.data());
 		for (const auto& device : vecDevices)
 		{
-			if (CSetupHelpers::isDeviceSuitable(device, surface))
+			if (CSetupHelpers::IsDeviceSuitable(device, surface))
 			{
 				physicalDevice = device;
 				break;
@@ -166,21 +172,21 @@ private:
 	}
 	void createLogicalDevice()
 	{
-		SQueueFamilyIndices indices =
-			CSetupHelpers::findQueueFamilies(physicalDevice, surface);
-		float queuePriority = 1.0f;
+		auto indices =
+			CSetupHelpers::FindQueueFamilies(physicalDevice, surface);
+		auto queuePriority = 1.0f;
 
 		std::vector<VkDeviceQueueCreateInfo> vecQueueCreateInfos;
 		// If the indices are the same, we'll end up using one
 		// VkDeviceQueueCreateInfo
-		std::set<uint32_t> setQueueFamilyIndices = { indices.graphicsFamily.value(),
-													indices.presentFamily.value() };
+		std::set<uint32_t> setQueueFamilyIndices = { indices.GraphicsFamily.value(),
+													indices.PresentFamily.value() };
 
 		for (auto queueFamilyIndex : setQueueFamilyIndices)
 		{
 			VkDeviceQueueCreateInfo queueCreateInfo = {};
 			queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-			queueCreateInfo.queueFamilyIndex = indices.graphicsFamily.value();
+			queueCreateInfo.queueFamilyIndex = queueFamilyIndex;
 			queueCreateInfo.queueCount = 1;
 			queueCreateInfo.pQueuePriorities = &queuePriority;
 			vecQueueCreateInfos.push_back(queueCreateInfo);
@@ -216,32 +222,32 @@ private:
 			throw std::runtime_error("Failed to create logical device.");
 		}
 
-		vkGetDeviceQueue(device, indices.graphicsFamily.value(), 0, &graphicsQueue);
-		vkGetDeviceQueue(device, indices.presentFamily.value(), 0, &presentQueue);
+		vkGetDeviceQueue(device, indices.GraphicsFamily.value(), 0, &graphicsQueue);
+		vkGetDeviceQueue(device, indices.PresentFamily.value(), 0, &presentQueue);
 	}
 	void createSwapChain()
 	{
-		SSwapChainSupportDetails details =
-			CSetupHelpers::querySwapChainSupport(physicalDevice, surface);
+		const auto details =
+			CSetupHelpers::QuerySwapChainSupport(physicalDevice, surface);
 
-		VkSurfaceFormatKHR format =
-			CSetupHelpers::chooseSwapSurfaceFormat(details.surfaceFormats);
-		VkPresentModeKHR presentMode =
-			CSetupHelpers::chooseSwapPresentMode(details.presentModes);
-		VkExtent2D extent =
-			CSetupHelpers::chooseSwapExtent(details.surfaceCapabilities);
+		const auto format =
+			CSetupHelpers::ChooseSwapSurfaceFormat(details.SurfaceFormats);
+		const auto presentMode =
+			CSetupHelpers::ChooseSwapPresentMode(details.PresentModes);
+		const auto extent =
+			CSetupHelpers::ChooseSwapExtent(details.SurfaceCapabilities);
 
-		uint32_t imageCount = details.surfaceCapabilities.minImageCount + 1;
-		if (details.surfaceCapabilities.maxImageCount > 0 &&
-			imageCount > details.surfaceCapabilities.maxImageCount)
+		auto imageCount = details.SurfaceCapabilities.minImageCount + 1;
+		if (details.SurfaceCapabilities.maxImageCount > 0 &&
+			imageCount > details.SurfaceCapabilities.maxImageCount)
 		{
-			imageCount = details.surfaceCapabilities.maxImageCount;
+			imageCount = details.SurfaceCapabilities.maxImageCount;
 		}
 
-		SQueueFamilyIndices indices =
-			CSetupHelpers::findQueueFamilies(physicalDevice, surface);
-		uint32_t queueFamilyIndices[] = { indices.graphicsFamily.value(),
-										 indices.presentFamily.value() };
+		auto indices =
+			CSetupHelpers::FindQueueFamilies(physicalDevice, surface);
+		uint32_t queueFamilyIndices[] = { indices.GraphicsFamily.value(),
+										 indices.PresentFamily.value() };
 
 		VkSwapchainCreateInfoKHR createInfo = {};
 		createInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
@@ -252,7 +258,7 @@ private:
 		createInfo.imageExtent = extent;
 		createInfo.imageArrayLayers = 1;
 		createInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
-		if (indices.graphicsFamily != indices.presentFamily)
+		if (indices.GraphicsFamily != indices.PresentFamily)
 		{
 			createInfo.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
 			createInfo.queueFamilyIndexCount = 2;
@@ -264,11 +270,11 @@ private:
 			createInfo.queueFamilyIndexCount = 0;
 			createInfo.pQueueFamilyIndices = nullptr;
 		}
-		createInfo.preTransform = details.surfaceCapabilities.currentTransform;
+		createInfo.preTransform = details.SurfaceCapabilities.currentTransform;
 		createInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
 		createInfo.presentMode = presentMode;
 		createInfo.clipped = VK_TRUE;
-		createInfo.oldSwapchain = VK_NULL_HANDLE;
+		createInfo.oldSwapchain = nullptr;
 
 		if (vkCreateSwapchainKHR(device, &createInfo, nullptr, &swapChain) !=
 			VK_SUCCESS)
@@ -287,7 +293,7 @@ private:
 	void createImageViews()
 	{
 		swapChainImageViews.resize(swapChainImages.size());
-		int index = 0;
+		auto index = 0;
 		for (const auto& image : swapChainImages)
 		{
 			VkImageViewCreateInfo createInfo = {};
@@ -312,7 +318,47 @@ private:
 			}
 		}
 	}
+	void createGraphicsPipeline() const
+	{
+		const auto vShader = CShaderLoader::ReadShader("Shaders/vShader.spv");
+		const auto fShader = CShaderLoader::ReadShader("Shaders/fShader.spv");
 
+		const auto vertShaderModule = createShaderModule(vShader);
+		const auto fragShaderModule = createShaderModule(fShader);
+
+		VkPipelineShaderStageCreateInfo vertCreateInfo = {};
+		vertCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+		vertCreateInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
+		vertCreateInfo.module = vertShaderModule;
+		vertCreateInfo.pName = "main";
+
+		VkPipelineShaderStageCreateInfo fragCreateInfo = {};
+		fragCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+		fragCreateInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+		fragCreateInfo.module = fragShaderModule;
+		fragCreateInfo.pName = "main";
+
+		VkPipelineShaderStageCreateInfo shaderStages[] = {
+			vertCreateInfo,
+			fragCreateInfo
+		};
+
+		vkDestroyShaderModule(device, vertShaderModule, nullptr);
+		vkDestroyShaderModule(device, fragShaderModule, nullptr);
+	}
+	[[nodiscard]] VkShaderModule createShaderModule(const std::vector<char>& code) const
+	{
+		VkShaderModuleCreateInfo createInfo = {};
+		createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+		createInfo.codeSize = code.size();
+		createInfo.pCode = reinterpret_cast<const uint32_t*>(code.data());
+		VkShaderModule shaderModule;
+		if (vkCreateShaderModule(device, &createInfo, nullptr, &shaderModule) != VK_SUCCESS)
+		{
+			throw std::runtime_error("Failed to create the shader module.");
+		}
+		return shaderModule;
+	}
 private:
 #ifdef _DEBUG
 	const bool enableValidationLayers = true;
@@ -320,25 +366,25 @@ private:
 	const bool enableValidationLayers = false;
 #endif
 private:
-	GLFWwindow* pWindow;
+	GLFWwindow* pWindow = nullptr;
 
 private:
-	VkInstance instance;
-	VkDebugUtilsMessengerEXT debugMessenger;
+	VkInstance instance = nullptr;
+	VkDebugUtilsMessengerEXT debugMessenger = nullptr;
 	// Cleaned up with the instance
-	VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
-	VkDevice device;
+	VkPhysicalDevice physicalDevice = nullptr;
+	VkDevice device = nullptr;
 	// Automatically created along with the logical device, so also cleaned up
 	// with the device
-	VkQueue graphicsQueue;
-	VkQueue presentQueue;
-	VkSurfaceKHR surface;
-	VkSwapchainKHR swapChain;
-	// No need to cleanup, will be cleanedup with the swapchain
+	VkQueue graphicsQueue = nullptr;
+	VkQueue presentQueue = nullptr;
+	VkSurfaceKHR surface = nullptr;
+	VkSwapchainKHR swapChain = nullptr;
+	// No need to cleanup, will be cleaned up with the swap chain
 	std::vector<VkImage> swapChainImages;
 	std::vector<VkImageView> swapChainImageViews;
-	VkFormat swapChainImageFormat;
-	VkExtent2D swapChainExtent;
+	VkFormat swapChainImageFormat = {};
+	VkExtent2D swapChainExtent = {};
 };
 
 int main()
