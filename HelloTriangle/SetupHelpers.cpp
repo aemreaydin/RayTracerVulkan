@@ -6,7 +6,7 @@ std::vector<const char*> CSetupHelpers::GetRequiredExtensions()
 	const auto glfwExtensions =
 		glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
 	std::vector<const char*> vecExtensions(glfwExtensions,
-										   glfwExtensions + glfwExtensionCount);
+	                                       glfwExtensions + glfwExtensionCount);
 
 #ifdef _DEBUG
 	vecExtensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
@@ -14,7 +14,8 @@ std::vector<const char*> CSetupHelpers::GetRequiredExtensions()
 	return vecExtensions;
 }
 
-bool CSetupHelpers::CheckExtensionSupport(const char** extensionsRequired, const uint32_t extensionsRequiredCount, std::vector<VkExtensionProperties> supportedExtensions)
+bool CSetupHelpers::CheckExtensionSupport(const char** extensionsRequired, const uint32_t extensionsRequiredCount,
+                                          std::vector<VkExtensionProperties> supportedExtensions)
 {
 	for (uint32_t i = 0; i != extensionsRequiredCount; i++)
 	{
@@ -34,7 +35,7 @@ bool CSetupHelpers::CheckDeviceExtensionsSupport(const VkPhysicalDevice& physica
 {
 	uint32_t deviceExtensionCount = 0;
 	vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr,
-										 &deviceExtensionCount, nullptr);
+	                                     &deviceExtensionCount, nullptr);
 	std::vector<VkExtensionProperties> vecExtensions(deviceExtensionCount);
 	vkEnumerateDeviceExtensionProperties(
 		physicalDevice, nullptr, &deviceExtensionCount, vecExtensions.data());
@@ -42,13 +43,14 @@ bool CSetupHelpers::CheckDeviceExtensionsSupport(const VkPhysicalDevice& physica
 	// If found an extension, remove it from the set, if the set empty you have
 	// everything you need
 	std::set<std::string> requiredExtensions(DEVICE_EXTENSIONS.begin(),
-											 DEVICE_EXTENSIONS.end());
+	                                         DEVICE_EXTENSIONS.end());
 	for (const auto& extension : vecExtensions)
 	{
 		requiredExtensions.erase(extension.extensionName);
 	}
 	return requiredExtensions.empty();
 }
+
 bool CSetupHelpers::CheckValidationSupport()
 {
 	uint32_t layerCount;
@@ -60,30 +62,31 @@ bool CSetupHelpers::CheckValidationSupport()
 	{
 		auto iter =
 			std::find_if(availableLayers.begin(), availableLayers.end(),
-						 [&layer](const VkLayerProperties& layerProperty)
-						 {
-							 return strcmp(layerProperty.layerName, layer) == 0;
-						 });
+			             [&layer](const VkLayerProperties& layerProperty)
+			             {
+				             return strcmp(layerProperty.layerName, layer) == 0;
+			             });
 		if (iter == availableLayers.end()) return false;
 	}
 	return true;
 }
-bool CSetupHelpers::IsDeviceSuitable(const VkPhysicalDevice& physicalDevice, 
-									 const VkSurfaceKHR& surface)
+
+bool CSetupHelpers::IsDeviceSuitable(const VkPhysicalDevice& physicalDevice,
+                                     const VkSurfaceKHR& surface)
 {
 	VkPhysicalDeviceProperties deviceProperties;
 	VkPhysicalDeviceFeatures deviceFeatures;
 	vkGetPhysicalDeviceProperties(physicalDevice, &deviceProperties);
 	vkGetPhysicalDeviceFeatures(physicalDevice, &deviceFeatures);
 	// Find if all queues have a value
-	SQueueFamilyIndices indices = FindQueueFamilies(physicalDevice, surface);
+	auto indices = FindQueueFamilies(physicalDevice, surface);
 	// Check just for swap chain support for now
-	bool swapChainAdequate = false;
-	bool extensionsSupported =
-		CSetupHelpers::CheckDeviceExtensionsSupport(physicalDevice);
+	auto swapChainAdequate = false;
+	auto extensionsSupported =
+		CheckDeviceExtensionsSupport(physicalDevice);
 	if (extensionsSupported)
 	{
-		SSwapChainSupportDetails details =
+		auto details =
 			QuerySwapChainSupport(physicalDevice, surface);
 		swapChainAdequate =
 			!details.SurfaceFormats.empty() && !details.PresentModes.empty();
@@ -95,31 +98,31 @@ bool CSetupHelpers::IsDeviceSuitable(const VkPhysicalDevice& physicalDevice,
 }
 
 SQueueFamilyIndices CSetupHelpers::FindQueueFamilies(const VkPhysicalDevice& device,
-													 const VkSurfaceKHR& surface)
+                                                     const VkSurfaceKHR& surface)
 {
 	SQueueFamilyIndices indices;
 
 	uint32_t queueFamilyCount = 0;
 	vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount,
-											 nullptr);
+	                                         nullptr);
 	std::vector<VkQueueFamilyProperties> vecQueueFamilies(queueFamilyCount);
 	vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount,
-											 vecQueueFamilies.data());
+	                                         vecQueueFamilies.data());
 
-	int i = 0;
+	auto index = 0;
 	for (const auto& queueFamily : vecQueueFamilies)
 	{
 		if (queueFamily.queueCount > 0 &&
 			queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT)
 		{
-			indices.GraphicsFamily = i;
+			indices.GraphicsFamily = index;
 		}
 
 		VkBool32 presentSupport;
-		vkGetPhysicalDeviceSurfaceSupportKHR(device, i, surface, &presentSupport);
+		vkGetPhysicalDeviceSurfaceSupportKHR(device, index, surface, &presentSupport);
 		if (queueFamily.queueCount > 0 && presentSupport)
 		{
-			indices.PresentFamily = i;
+			indices.PresentFamily = index;
 		}
 
 		if (indices.IsComplete())
@@ -127,22 +130,22 @@ SQueueFamilyIndices CSetupHelpers::FindQueueFamilies(const VkPhysicalDevice& dev
 			break;
 		}
 
-		i++;
+		index++;
 	}
 	return indices;
 }
 
-SSwapChainSupportDetails CSetupHelpers::QuerySwapChainSupport(const VkPhysicalDevice& physicalDevice, 
-															  const VkSurfaceKHR& surface)
+SSwapChainSupportDetails CSetupHelpers::QuerySwapChainSupport(const VkPhysicalDevice& physicalDevice,
+                                                              const VkSurfaceKHR& surface)
 {
 	SSwapChainSupportDetails details;
 
 	vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physicalDevice, surface,
-											  &details.SurfaceCapabilities);
+	                                          &details.SurfaceCapabilities);
 
 	uint32_t formatCount = 0;
 	vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice, surface, &formatCount,
-										 nullptr);
+	                                     nullptr);
 	if (formatCount != 0)
 	{
 		details.SurfaceFormats.resize(formatCount);
@@ -152,7 +155,7 @@ SSwapChainSupportDetails CSetupHelpers::QuerySwapChainSupport(const VkPhysicalDe
 
 	uint32_t presentCount = 0;
 	vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, surface,
-											  &presentCount, nullptr);
+	                                          &presentCount, nullptr);
 	if (presentCount != 0)
 	{
 		details.PresentModes.resize(presentCount);
@@ -166,12 +169,12 @@ SSwapChainSupportDetails CSetupHelpers::QuerySwapChainSupport(const VkPhysicalDe
 VkSurfaceFormatKHR CSetupHelpers::ChooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats)
 {
 	const auto iter = std::find_if(availableFormats.begin(), availableFormats.end(),
-							 [](const VkSurfaceFormatKHR& format)
-							 {
-								 return format.colorSpace ==
-									 VK_COLOR_SPACE_SRGB_NONLINEAR_KHR &&
-									 format.format == VK_FORMAT_B8G8R8A8_UNORM;
-							 });
+	                               [](const VkSurfaceFormatKHR& format)
+	                               {
+		                               return format.colorSpace ==
+			                               VK_COLOR_SPACE_SRGB_NONLINEAR_KHR &&
+			                               format.format == VK_FORMAT_B8G8R8A8_UNORM;
+	                               });
 	if (iter != availableFormats.end())
 	{
 		return *iter;
@@ -183,10 +186,10 @@ VkPresentModeKHR CSetupHelpers::ChooseSwapPresentMode(const std::vector<VkPresen
 {
 	const auto iter =
 		std::find_if(availablePresentModes.begin(), availablePresentModes.end(),
-					 [](const VkPresentModeKHR& presentMode)
-					 {
-						 return presentMode == VK_PRESENT_MODE_MAILBOX_KHR;
-					 });
+		             [](const VkPresentModeKHR& presentMode)
+		             {
+			             return presentMode == VK_PRESENT_MODE_MAILBOX_KHR;
+		             });
 	if (iter != availablePresentModes.end())
 	{
 		return *iter;
@@ -200,13 +203,13 @@ VkExtent2D CSetupHelpers::ChooseSwapExtent(const VkSurfaceCapabilitiesKHR& capab
 	{
 		return capabilities.currentExtent;
 	}
-	
-	VkExtent2D actualExtent = { WIDTH, HEIGHT };
+
+	VkExtent2D actualExtent = {WIDTH, HEIGHT};
 	actualExtent.width =
 		std::clamp(actualExtent.width, capabilities.minImageExtent.width,
-				   capabilities.maxImageExtent.width);
+		           capabilities.maxImageExtent.width);
 	actualExtent.height =
 		std::clamp(actualExtent.height, capabilities.minImageExtent.height,
-				   capabilities.maxImageExtent.height);
-	return actualExtent;	
+		           capabilities.maxImageExtent.height);
+	return actualExtent;
 }

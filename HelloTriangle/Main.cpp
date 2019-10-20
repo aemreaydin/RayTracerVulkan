@@ -27,6 +27,7 @@ private:
 		pWindow =
 			glfwCreateWindow(WIDTH, HEIGHT, "RayTracer Vulkan", nullptr, nullptr);
 	}
+
 	void initVulkan()
 	{
 		createInstance();
@@ -42,7 +43,7 @@ private:
 		createImageViews();
 		createGraphicsPipeline();
 	}
-	
+
 	void mainLoop() const
 	{
 		while (!glfwWindowShouldClose(pWindow))
@@ -63,13 +64,14 @@ private:
 		if (enableValidationLayers)
 		{
 			CDebugHelpers::DestroyDebugUtilsMessengerExt(instance, debugMessenger,
-														 nullptr);
+			                                             nullptr);
 		}
 		vkDestroySurfaceKHR(instance, surface, nullptr);
 		vkDestroyInstance(instance, nullptr);
 		glfwDestroyWindow(pWindow);
 		glfwTerminate();
 	}
+
 private:
 	void createInstance()
 	{
@@ -92,16 +94,16 @@ private:
 
 		uint32_t optionalExtensionCount = 0;
 		vkEnumerateInstanceExtensionProperties(nullptr, &optionalExtensionCount,
-											   nullptr);
+		                                       nullptr);
 		std::vector<VkExtensionProperties> vecExtProperties(optionalExtensionCount);
 		vkEnumerateInstanceExtensionProperties(nullptr, &optionalExtensionCount,
-											   vecExtProperties.data());
+		                                       vecExtProperties.data());
 		// Check if all the required extensions are supported by Vulkan
 		const auto isSupported = CSetupHelpers::CheckExtensionSupport(
 			vecExtensions.data(), static_cast<uint32_t>(vecExtensions.size()),
 			vecExtProperties);
 
-		if(!isSupported)
+		if (!isSupported)
 		{
 			throw std::runtime_error("Extension Support Error.");
 		}
@@ -138,6 +140,7 @@ private:
 			throw std::runtime_error("Failed to create VkInstance.");
 		}
 	}
+
 	void createSurface()
 	{
 		if (glfwCreateWindowSurface(instance, pWindow, nullptr, &surface) !=
@@ -146,6 +149,7 @@ private:
 			throw std::runtime_error("Failed to create the surface.");
 		}
 	}
+
 	void pickPhysicalDevice()
 	{
 		uint32_t physicalDeviceCount = 0;
@@ -156,7 +160,7 @@ private:
 		}
 		std::vector<VkPhysicalDevice> vecDevices(physicalDeviceCount);
 		vkEnumeratePhysicalDevices(instance, &physicalDeviceCount,
-								   vecDevices.data());
+		                           vecDevices.data());
 		for (const auto& device : vecDevices)
 		{
 			if (CSetupHelpers::IsDeviceSuitable(device, surface))
@@ -165,11 +169,12 @@ private:
 				break;
 			}
 		}
-		if (physicalDevice == VK_NULL_HANDLE)
+		if (physicalDevice == nullptr)
 		{
 			throw std::runtime_error("Failed to find a suitable GPU.");
 		}
 	}
+
 	void createLogicalDevice()
 	{
 		auto indices =
@@ -179,8 +184,10 @@ private:
 		std::vector<VkDeviceQueueCreateInfo> vecQueueCreateInfos;
 		// If the indices are the same, we'll end up using one
 		// VkDeviceQueueCreateInfo
-		std::set<uint32_t> setQueueFamilyIndices = { indices.GraphicsFamily.value(),
-													indices.PresentFamily.value() };
+		std::set<uint32_t> setQueueFamilyIndices = {
+			indices.GraphicsFamily.value(),
+			indices.PresentFamily.value()
+		};
 
 		for (auto queueFamilyIndex : setQueueFamilyIndices)
 		{
@@ -225,6 +232,7 @@ private:
 		vkGetDeviceQueue(device, indices.GraphicsFamily.value(), 0, &graphicsQueue);
 		vkGetDeviceQueue(device, indices.PresentFamily.value(), 0, &presentQueue);
 	}
+
 	void createSwapChain()
 	{
 		const auto details =
@@ -246,8 +254,10 @@ private:
 
 		auto indices =
 			CSetupHelpers::FindQueueFamilies(physicalDevice, surface);
-		uint32_t queueFamilyIndices[] = { indices.GraphicsFamily.value(),
-										 indices.PresentFamily.value() };
+		uint32_t queueFamilyIndices[] = {
+			indices.GraphicsFamily.value(),
+			indices.PresentFamily.value()
+		};
 
 		VkSwapchainCreateInfoKHR createInfo = {};
 		createInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
@@ -285,11 +295,12 @@ private:
 		vkGetSwapchainImagesKHR(device, swapChain, &imageCount, nullptr);
 		swapChainImages.resize(imageCount);
 		vkGetSwapchainImagesKHR(device, swapChain, &imageCount,
-								swapChainImages.data());
+		                        swapChainImages.data());
 
 		swapChainImageFormat = format.format;
 		swapChainExtent = extent;
 	}
+
 	void createImageViews()
 	{
 		swapChainImageViews.resize(swapChainImages.size());
@@ -312,12 +323,13 @@ private:
 			createInfo.subresourceRange.layerCount = 1;
 
 			if (vkCreateImageView(device, &createInfo, nullptr,
-								  &swapChainImageViews[index++]) != VK_SUCCESS)
+			                      &swapChainImageViews[index++]) != VK_SUCCESS)
 			{
 				throw std::runtime_error("Failed to create the image view.");
 			}
 		}
 	}
+
 	void createGraphicsPipeline() const
 	{
 		const auto vShader = CShaderLoader::ReadShader("Shaders/vShader.spv");
@@ -346,6 +358,7 @@ private:
 		vkDestroyShaderModule(device, vertShaderModule, nullptr);
 		vkDestroyShaderModule(device, fragShaderModule, nullptr);
 	}
+
 	[[nodiscard]] VkShaderModule createShaderModule(const std::vector<char>& code) const
 	{
 		VkShaderModuleCreateInfo createInfo = {};
@@ -359,6 +372,7 @@ private:
 		}
 		return shaderModule;
 	}
+
 private:
 #ifdef _DEBUG
 	const bool enableValidationLayers = true;
@@ -395,7 +409,7 @@ int main()
 	{
 		app.Run();
 	}
-	catch (const std::exception & e)
+	catch (const std::exception& e)
 	{
 		std::cerr << e.what() << std::endl;
 		return EXIT_FAILURE;

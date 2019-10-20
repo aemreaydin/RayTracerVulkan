@@ -1,9 +1,9 @@
 #include "DebugHelpers.h"
 
 VKAPI_ATTR VkBool32 VKAPI_CALL CDebugHelpers::DebugCallback(const VkDebugUtilsMessageSeverityFlagBitsEXT msgSeverity,
-															VkDebugUtilsMessageTypeFlagsEXT msgType,
-															const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
-															void* pUserData)
+                                                            VkDebugUtilsMessageTypeFlagsEXT msgType,
+                                                            const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
+                                                            void* pUserData)
 {
 	if (msgSeverity == VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT)
 	{
@@ -20,22 +20,23 @@ VKAPI_ATTR VkBool32 VKAPI_CALL CDebugHelpers::DebugCallback(const VkDebugUtilsMe
 			<< std::endl;
 	}
 	else
-	{  // ERROR
+	{
+		// ERROR
 		std::cerr << "VALIDATION::ERROR: " << pCallbackData->pMessage << std::endl;
 	}
 
 	return VK_FALSE;
 }
 
-void CDebugHelpers::SetupDebugMessenger(const VkInstance& instance, 
-										const VkAllocationCallbacks* pAllocator,
-										VkDebugUtilsMessengerEXT* pDebugMessenger)
+void CDebugHelpers::SetupDebugMessenger(const VkInstance& instance,
+                                        const VkAllocationCallbacks* pAllocator,
+                                        VkDebugUtilsMessengerEXT* pDebugMessenger)
 {
 	VkDebugUtilsMessengerCreateInfoEXT createInfo = {};
 	PopulateDebugMessengerCreateInfo(createInfo);
 
 	if (CreateDebugUtilsMessengerExt(instance, &createInfo, nullptr,
-									 pDebugMessenger) != VK_SUCCESS)
+	                                 pDebugMessenger) != VK_SUCCESS)
 	{
 		throw std::runtime_error("Failed to setup debug messenger.");
 	}
@@ -50,15 +51,17 @@ void CDebugHelpers::PopulateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreate
 	createInfo.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT |
 		VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |
 		VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
-	createInfo.pfnUserCallback = CDebugHelpers::DebugCallback;
+	createInfo.pfnUserCallback = DebugCallback;
 	createInfo.pUserData = nullptr;
 }
 
-VkResult CDebugHelpers::CreateDebugUtilsMessengerExt(const VkInstance& instance, const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo,
-	const VkAllocationCallbacks* pAllocator,
-	VkDebugUtilsMessengerEXT* pDebugMessenger)
+VkResult CDebugHelpers::CreateDebugUtilsMessengerExt(const VkInstance& instance,
+                                                     const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo,
+                                                     const VkAllocationCallbacks* pAllocator,
+                                                     VkDebugUtilsMessengerEXT* pDebugMessenger)
 {
-	const auto func = reinterpret_cast<PFN_vkCreateDebugUtilsMessengerEXT>(vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT"));
+	const auto func = reinterpret_cast<PFN_vkCreateDebugUtilsMessengerEXT>(vkGetInstanceProcAddr(
+		instance, "vkCreateDebugUtilsMessengerEXT"));
 	if (func)
 	{
 		return func(instance, pCreateInfo, pAllocator, pDebugMessenger);
@@ -70,8 +73,7 @@ void CDebugHelpers::DestroyDebugUtilsMessengerExt(
 	const VkInstance& instance, const VkDebugUtilsMessengerEXT debugMessenger,
 	const VkAllocationCallbacks* pAllocator)
 {
-	auto func = (PFN_vkDestroyDebugUtilsMessengerEXT)vkGetInstanceProcAddr(
-		instance, "vkDestroyDebugUtilsMessengerEXT");
+	const auto func = reinterpret_cast<PFN_vkDestroyDebugUtilsMessengerEXT>(vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT"));
 	if (func)
 	{
 		func(instance, debugMessenger, pAllocator);

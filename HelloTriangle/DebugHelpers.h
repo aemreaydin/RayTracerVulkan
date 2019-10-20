@@ -6,13 +6,13 @@ class CDebugHelpers
 {
 public:
 	static VKAPI_ATTR VkBool32 VKAPI_CALL DebugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT msgSeverity,
-														VkDebugUtilsMessageTypeFlagsEXT msgType,
-														const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
-														void* pUserData);
+	                                                    VkDebugUtilsMessageTypeFlagsEXT msgType,
+	                                                    const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
+	                                                    void* pUserData);
 
 	static void SetupDebugMessenger(const VkInstance& instance,
-									const VkAllocationCallbacks* pAllocator,
-									VkDebugUtilsMessengerEXT* pDebugMessenger);
+	                                const VkAllocationCallbacks* pAllocator,
+	                                VkDebugUtilsMessengerEXT* pDebugMessenger);
 
 	static void PopulateDebugMessengerCreateInfo(
 		VkDebugUtilsMessengerCreateInfoEXT& createInfo);
