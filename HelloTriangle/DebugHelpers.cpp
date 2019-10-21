@@ -35,7 +35,7 @@ void CDebugHelpers::SetupDebugMessenger(const VkInstance& instance,
 	VkDebugUtilsMessengerCreateInfoEXT createInfo = {};
 	PopulateDebugMessengerCreateInfo(createInfo);
 
-	if (CreateDebugUtilsMessengerExt(instance, &createInfo, nullptr,
+	if (CreateDebugUtilsMessengerExt(instance, &createInfo, pAllocator,
 	                                 pDebugMessenger) != VK_SUCCESS)
 	{
 		throw std::runtime_error("Failed to setup debug messenger.");
@@ -73,7 +73,8 @@ void CDebugHelpers::DestroyDebugUtilsMessengerExt(
 	const VkInstance& instance, const VkDebugUtilsMessengerEXT debugMessenger,
 	const VkAllocationCallbacks* pAllocator)
 {
-	const auto func = reinterpret_cast<PFN_vkDestroyDebugUtilsMessengerEXT>(vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT"));
+	const auto func = reinterpret_cast<PFN_vkDestroyDebugUtilsMessengerEXT>(vkGetInstanceProcAddr(
+		instance, "vkDestroyDebugUtilsMessengerEXT"));
 	if (func)
 	{
 		func(instance, debugMessenger, pAllocator);
