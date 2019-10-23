@@ -54,6 +54,7 @@ private:
 		createGraphicsPipeline();
 		createFramebuffers();
 		createCommandPool();
+		createVertexBuffer();
 		createCommandBuffers();
 		createSyncObjects();
 	}
@@ -71,6 +72,10 @@ private:
 	void cleanup()
 	{
 		cleanupSwapChain();
+
+		vkDestroyBuffer(device, vertexBuffer, nullptr);
+		vkFreeMemory(device, vertexBufferMemory, nullptr);
+		
 		auto index = 0;
 		for(auto& imageSemaphore : vecSemaphoreImageAvailable)
 		{
@@ -421,6 +426,9 @@ private:
 			fragShaderStateCreateInfo
 		};
 
+		const auto bindingDescription = SVertex::GetInputBindingDescription();
+		const auto attributeDescriptions = SVertex::GetInputAttributeDescriptions();
+
 		// Vertex Input State
 		VkPipelineVertexInputStateCreateInfo vertexInputStateCreateInfo = {};
 		vertexInputStateCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
@@ -428,6 +436,10 @@ private:
 		vertexInputStateCreateInfo.vertexBindingDescriptionCount = 0;
 		vertexInputStateCreateInfo.pVertexAttributeDescriptions = nullptr;
 		vertexInputStateCreateInfo.pVertexBindingDescriptions = nullptr;
+		vertexInputStateCreateInfo.vertexBindingDescriptionCount = 1;
+		vertexInputStateCreateInfo.vertexAttributeDescriptionCount = attributeDescriptions.size();
+		vertexInputStateCreateInfo.pVertexBindingDescriptions = &bindingDescription;
+		vertexInputStateCreateInfo.pVertexAttributeDescriptions = attributeDescriptions.data();
 
 		// Input Assembly State
 		VkPipelineInputAssemblyStateCreateInfo inputAssemblyStateCreateInfo = {};
@@ -596,6 +608,42 @@ private:
 		}
 	}
 
+	void createVertexBuffer()
+	{
+		VkBufferCreateInfo bufferCreateInfo = {};
+		bufferCreateInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+		bufferCreateInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+		bufferCreateInfo.size = sizeof(vecVertices[0]) * vecVertices.size();
+		bufferCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+		if(vkCreateBuffer(device, &bufferCreateInfo, nullptr, &vertexBuffer) != VK_SUCCESS)
+		{
+			throw std::runtime_error("Failed to create the vertex buffer.");
+		}
+
+		VkMemoryRequirements memoryRequirements = {};
+		vkGetBufferMemoryRequirements(device, vertexBuffer, &memoryRequirements);
+
+		VkMemoryAllocateInfo memoryAllocateInfo = {};
+		memoryAllocateInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+		memoryAllocateInfo.allocationSize = memoryRequirements.size;
+		memoryAllocateInfo.memoryTypeIndex = CSetupHelpers::FindMemoryType(physicalDevice,
+																		   memoryRequirements.memoryTypeBits,
+																		   VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+
+		if(vkAllocateMemory(device, &memoryAllocateInfo, nullptr, &vertexBufferMemory) != VK_SUCCESS)
+		{
+			throw std::runtime_error("Failed to allocate memory for the vertex buffer.");
+		}
+
+		vkBindBufferMemory(device, vertexBuffer, vertexBufferMemory, 0);
+
+		void* data;
+		vkMapMemory(device, vertexBufferMemory, 0, bufferCreateInfo.size, 0, &data);
+		std::memcpy(data, vecVertices.data(), bufferCreateInfo.size);
+		vkUnmapMemory(device, vertexBufferMemory);
+	}
+
 	void createCommandBuffers()
 	{
 		vecCommandBuffers.resize(vecSwapChainFramebuffers.size());
@@ -636,7 +684,10 @@ private:
 			// Bind the Graphics Pipeline
 			vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
 			// Draw
-			vkCmdDraw(commandBuffer, 3, 1, 0, 0);
+			VkBuffer vertexBuffers[] = { vertexBuffer };
+			VkDeviceSize offsets[] = { 0 };
+			vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
+			vkCmdDraw(commandBuffer, vecVertices.size(), 1, 0, 0);
 			// End Render Pass
 			vkCmdEndRenderPass(commandBuffer);
 			// End recording the command buffer
@@ -745,7 +796,7 @@ private:
 
 	void recreateSwapChain()
 	{
-		int width = 0, height = 0;
+		auto width = 0, height = 0;
 		while (width == 0 || height == 0)
 		{
 			glfwGetFramebufferSize(pWindow, &width, &height);
@@ -832,6 +883,13 @@ private:
 	std::vector<VkFence> vecInFlightFences;
 	size_t currentFrame = 0;
 	bool framebufferResized = false;
+	const std::vector<SVertex> vecVertices = {
+		{{0.0f, -0.5f, 0.0f, 1.0f}, {0.0f, 0.0f, 1.0f, 1.0f}},
+		{{0.5f, 0.5f, 0.0f, 1.0f}, {0.0f, 1.0f, 1.0f, 1.0f}},
+		{{-0.5f, 0.5f, 0.0f, 1.0f}, {1.0f, 0.0f, 1.0f, 1.0f}}
+	};
+	VkBuffer vertexBuffer = nullptr;
+	VkDeviceMemory vertexBufferMemory = nullptr;
 };
 
 int main()

@@ -219,3 +219,19 @@ VkExtent2D CSetupHelpers::ChooseSwapExtent(GLFWwindow* pWindow, const VkSurfaceC
 		           capabilities.maxImageExtent.height);
 	return actualExtent;
 }
+
+uint32_t CSetupHelpers::FindMemoryType(const VkPhysicalDevice& physicalDevice, const uint32_t typeFilter, const VkMemoryPropertyFlags properties)
+{
+	VkPhysicalDeviceMemoryProperties memoryProperties;
+	vkGetPhysicalDeviceMemoryProperties(physicalDevice, &memoryProperties);
+
+	for(uint32_t i = 0; i != memoryProperties.memoryTypeCount; i++)
+	{
+		if((typeFilter & (1 << i)) && (memoryProperties.memoryTypes[i].propertyFlags & properties) == properties)
+		{
+			return i;
+		}
+	}
+
+	throw std::runtime_error("Failed to find a suitable memory type.");
+}
