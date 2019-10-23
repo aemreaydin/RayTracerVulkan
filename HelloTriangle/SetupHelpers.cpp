@@ -118,6 +118,18 @@ SQueueFamilyIndices CSetupHelpers::FindQueueFamilies(const VkPhysicalDevice& dev
 			indices.GraphicsFamily = index;
 		}
 
+		if(queueFamily.queueCount > 0)
+		{
+			if(queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT)
+			{
+				indices.GraphicsFamily = index;
+			}
+			else if(queueFamily.queueFlags & VK_QUEUE_TRANSFER_BIT)
+			{
+				indices.TransferFamily = index;
+			}
+		}
+
 		VkBool32 presentSupport;
 		vkGetPhysicalDeviceSurfaceSupportKHR(device, index, surface, &presentSupport);
 		if (queueFamily.queueCount > 0 && presentSupport)
