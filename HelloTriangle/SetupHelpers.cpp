@@ -197,16 +197,22 @@ VkPresentModeKHR CSetupHelpers::ChooseSwapPresentMode(const std::vector<VkPresen
 	return VK_PRESENT_MODE_FIFO_KHR;
 }
 
-VkExtent2D CSetupHelpers::ChooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities)
+VkExtent2D CSetupHelpers::ChooseSwapExtent(GLFWwindow* pWindow, const VkSurfaceCapabilitiesKHR& capabilities)
 {
 	if (capabilities.currentExtent.width != std::numeric_limits<uint32_t>::max())
 	{
 		return capabilities.currentExtent;
 	}
 
-	VkExtent2D actualExtent = {WIDTH, HEIGHT};
-	actualExtent.width =
-		std::clamp(actualExtent.width, capabilities.minImageExtent.width,
+	int width, height;
+	glfwGetFramebufferSize(pWindow, &width, &height);
+
+	VkExtent2D actualExtent = {
+		static_cast<uint32_t>(width),
+		static_cast<uint32_t>(height)
+	};
+
+	actualExtent.width = std::clamp(actualExtent.width, capabilities.minImageExtent.width,
 		           capabilities.maxImageExtent.width);
 	actualExtent.height =
 		std::clamp(actualExtent.height, capabilities.minImageExtent.height,

@@ -5,7 +5,7 @@
 #include <map>
 
 const int MAX_FRAMES_IN_FLIGHT = 2;
-size_t currentFrame = 0;
+
 
 class HelloTriangleApp
 {
@@ -20,15 +20,21 @@ public:
 		cleanup();
 	}
 private:
+	static void framebufferResizeCallback(GLFWwindow* window, int width, int height)
+	{
+		const auto app = reinterpret_cast<HelloTriangleApp*>(glfwGetWindowUserPointer(window));
+		app->framebufferResized = true;
+	}
 	void initWindow()
 	{
 		glfwInit();
 		// Don't create an OpenGL context
 		glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-		glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
 
 		pWindow =
 			glfwCreateWindow(WIDTH, HEIGHT, "RayTracer Vulkan", nullptr, nullptr);
+		glfwSetWindowUserPointer(pWindow, this);
+		glfwSetFramebufferSizeCallback(pWindow, framebufferResizeCallback);
 	}
 
 	void initVulkan()
@@ -64,27 +70,17 @@ private:
 
 	void cleanup()
 	{
+		cleanupSwapChain();
 		auto index = 0;
 		for(auto& imageSemaphore : vecSemaphoreImageAvailable)
 		{
-			vkDestroyFence(device, vecInFlightFences[index], nullptr);
-			vkDestroySemaphore(device, vecSemaphoreRenderFinished[index], nullptr);
 			vkDestroySemaphore(device, imageSemaphore, nullptr);
+			vkDestroySemaphore(device, vecSemaphoreRenderFinished[index], nullptr);
+			vkDestroyFence(device, vecInFlightFences[index], nullptr);
 			index++;
 		}
 		vkDestroyCommandPool(device, commandPool, nullptr);
-		for(auto& framebuffer : vecSwapChainFramebuffers)
-		{
-			vkDestroyFramebuffer(device, framebuffer, nullptr);
-		}
-		vkDestroyPipeline(device, graphicsPipeline, nullptr);
-		vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
-		vkDestroyRenderPass(device, renderPass, nullptr);
-		for (auto& imageView : vecSwapChainImageViews)
-		{
-			vkDestroyImageView(device, imageView, nullptr);
-		}
-		vkDestroySwapchainKHR(device, swapChain, nullptr);
+		
 		vkDestroyDevice(device, nullptr);
 
 		if (enableValidationLayers)
@@ -269,7 +265,7 @@ private:
 		const auto presentMode =
 			CSetupHelpers::ChooseSwapPresentMode(details.PresentModes);
 		const auto extent =
-			CSetupHelpers::ChooseSwapExtent(details.SurfaceCapabilities);
+			CSetupHelpers::ChooseSwapExtent(pWindow, details.SurfaceCapabilities);
 
 		auto imageCount = details.SurfaceCapabilities.minImageCount + 1;
 		if (details.SurfaceCapabilities.maxImageCount > 0 &&
@@ -443,8 +439,8 @@ private:
 		VkViewport viewport = {};
 		viewport.x = 0.0f;
 		viewport.y = 0.0f;
-		viewport.width = swapChainExtent.width;
-		viewport.height = swapChainExtent.height;
+		viewport.width = static_cast<float>(swapChainExtent.width);
+		viewport.height = static_cast<float>(swapChainExtent.height);
 		viewport.minDepth = 0.0f;
 		viewport.maxDepth = 1.0f;
 
@@ -607,7 +603,7 @@ private:
 		VkCommandBufferAllocateInfo allocateInfo = {};
 		allocateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
 		allocateInfo.commandPool = commandPool;
-		allocateInfo.commandBufferCount = vecCommandBuffers.size();
+		allocateInfo.commandBufferCount = static_cast<uint32_t>(vecCommandBuffers.size());
 		allocateInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
 
 		if (vkAllocateCommandBuffers(device, &allocateInfo, vecCommandBuffers.data()) != VK_SUCCESS)
@@ -681,13 +677,22 @@ private:
 	{
 		// Wait for the frame to be finished
 		vkWaitForFences(device, 1, &vecInFlightFences[currentFrame], VK_TRUE, std::numeric_limits<uint64_t>::max());
-		vkResetFences(device, 1, &vecInFlightFences[currentFrame]);
 		// Acquire an image from the swapchain
 		// As in, acquire the index that refers to the VkImage in vecSwapchainImages
 		uint32_t imageIndex;
-		vkAcquireNextImageKHR(device, swapChain, std::numeric_limits<uint64_t>::max(),
+		auto result = vkAcquireNextImageKHR(device, swapChain, std::numeric_limits<uint64_t>::max(),
 		                      vecSemaphoreImageAvailable[currentFrame], nullptr, &imageIndex);
 
+		if(result == VK_ERROR_OUT_OF_DATE_KHR)
+		{
+			recreateSwapChain();
+			return;
+		}
+		if(result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR)
+		{
+			throw std::runtime_error("Failed to acquire the swapchain image");
+		}
+		
 		VkSubmitInfo submitInfo = {};
 		VkSemaphore waitSemaphores[] = {
 			vecSemaphoreImageAvailable[currentFrame]
@@ -707,6 +712,8 @@ private:
 		submitInfo.signalSemaphoreCount = 1;
 		submitInfo.pSignalSemaphores = signalSemaphores;
 
+		vkResetFences(device, 1, &vecInFlightFences[currentFrame]);
+		
 		if(vkQueueSubmit(graphicsQueue, 1, &submitInfo, vecInFlightFences[currentFrame]) != VK_SUCCESS)
 		{
 			throw std::runtime_error("Failed to submit the queue.");
@@ -722,9 +729,56 @@ private:
 		presentInfo.pImageIndices = &imageIndex;
 		presentInfo.pResults = nullptr;
 
-		vkQueuePresentKHR(graphicsQueue, &presentInfo);
+		result = vkQueuePresentKHR(presentQueue, &presentInfo);
+		if(result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR || framebufferResized)
+		{
+			framebufferResized = false;
+			recreateSwapChain();
+		}
+		else if(result != VK_SUCCESS)
+		{
+			throw std::runtime_error("Failed to present the swap chain image.");
+		}
 
 		currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
+	}
+
+	void recreateSwapChain()
+	{
+		int width = 0, height = 0;
+		while (width == 0 || height == 0)
+		{
+			glfwGetFramebufferSize(pWindow, &width, &height);
+			glfwWaitEvents();
+		}
+		
+		vkDeviceWaitIdle(device);
+
+		cleanupSwapChain();
+
+		createSwapChain();
+		createImageViews();
+		createRenderPass();
+		createGraphicsPipeline();
+		createFramebuffers();
+		createCommandBuffers();
+	}
+
+	void cleanupSwapChain()
+	{
+		for (auto framebuffer : vecSwapChainFramebuffers)
+		{
+			vkDestroyFramebuffer(device, framebuffer, nullptr);
+		}
+		vkFreeCommandBuffers(device, commandPool, static_cast<uint32_t>(vecCommandBuffers.size()), vecCommandBuffers.data());
+		vkDestroyPipeline(device, graphicsPipeline, nullptr);
+		vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
+		vkDestroyRenderPass(device, renderPass, nullptr);
+		for (auto imageView : vecSwapChainImageViews)
+		{
+			vkDestroyImageView(device, imageView, nullptr);
+		}
+		vkDestroySwapchainKHR(device, swapChain, nullptr);
 	}
 
 	[[nodiscard]] VkShaderModule createShaderModule(const std::vector<char>& code) const
@@ -776,6 +830,8 @@ private:
 	std::vector<VkSemaphore> vecSemaphoreImageAvailable;
 	std::vector<VkSemaphore> vecSemaphoreRenderFinished;
 	std::vector<VkFence> vecInFlightFences;
+	size_t currentFrame = 0;
+	bool framebufferResized = false;
 };
 
 int main()
