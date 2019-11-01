@@ -11,7 +11,10 @@
 #include <stdexcept>
 #include <vector>
 #include <array>
-#include <glm/vec4.hpp>
+
+#define GLM_FORCE_RADIANS
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
 
 const uint32_t WIDTH = 800;
 const uint32_t HEIGHT = 600;
@@ -54,4 +57,11 @@ struct SVertex
 	}
 	glm::vec4 Position;
 	glm::vec4 Color;
+};
+
+struct SUniformBufferObject
+{
+	alignas(16) glm::mat4 Model;
+	alignas(16) glm::mat4 View;
+	alignas(16) glm::mat4 Projection;
 };
