@@ -16,6 +16,7 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
+
 const uint32_t WIDTH = 800;
 const uint32_t HEIGHT = 600;
 
@@ -38,6 +39,7 @@ struct SVertex
 
 		return inputBindingDescription;
 	}
+
 	static std::array<VkVertexInputAttributeDescription, 2> GetInputAttributeDescriptions()
 	{
 		std::array<VkVertexInputAttributeDescription, 2> inputAttributeDescriptions = {};
@@ -55,6 +57,7 @@ struct SVertex
 
 		return inputAttributeDescriptions;
 	}
+
 	glm::vec4 Position;
 	glm::vec4 Color;
 };
