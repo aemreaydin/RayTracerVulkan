@@ -94,7 +94,8 @@ bool CSetupHelpers::IsDeviceSuitable(const VkPhysicalDevice& physicalDevice,
 	return deviceProperties.deviceType ==
 		VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU &&
 		deviceFeatures.geometryShader && indices.IsComplete() &&
-		swapChainAdequate;
+		swapChainAdequate &&
+		deviceFeatures.samplerAnisotropy;
 }
 
 SQueueFamilyIndices CSetupHelpers::FindQueueFamilies(const VkPhysicalDevice& device,
@@ -247,3 +248,34 @@ uint32_t CSetupHelpers::FindMemoryType(const VkPhysicalDevice& physicalDevice, c
 
 	throw std::runtime_error("Failed to find a suitable memory type.");
 }
+
+VkFormat CSetupHelpers::FindSupportedFormat(const VkPhysicalDevice& physicalDevice, const std::vector<VkFormat>& vecFormat, const VkImageTiling& tiling,
+	const VkFormatFeatureFlags& features)
+{
+	for(auto& format : vecFormat)
+	{
+		VkFormatProperties properties;
+		vkGetPhysicalDeviceFormatProperties(physicalDevice, format, &properties);
+
+		if(tiling == VK_IMAGE_TILING_LINEAR && (properties.linearTilingFeatures & features) == features)
+			return format;
+		if(tiling == VK_IMAGE_TILING_OPTIMAL && (properties.optimalTilingFeatures & features) == features)
+			return format;
+
+	}
+	throw std::runtime_error("Failed to find a supported format.");
+}
+
+VkFormat CSetupHelpers::FindDepthFormat(const VkPhysicalDevice& physicalDevice)
+{
+	return FindSupportedFormat(physicalDevice, 
+							   { VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT, VK_FORMAT_D24_UNORM_S8_UINT },
+							   VK_IMAGE_TILING_OPTIMAL,
+							   VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT);
+}
+
+bool CSetupHelpers::HasStencilComponent(const VkFormat& format)
+{
+	return format == VK_FORMAT_D32_SFLOAT_S8_UINT || format == VK_FORMAT_D24_UNORM_S8_UINT;
+}
+

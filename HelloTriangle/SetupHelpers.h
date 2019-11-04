@@ -44,4 +44,7 @@ public:
 	static VkExtent2D ChooseSwapExtent(GLFWwindow* pWindow, const VkSurfaceCapabilitiesKHR& capabilities);
 
 	static uint32_t FindMemoryType(const VkPhysicalDevice& physicalDevice, uint32_t typeFilter, VkMemoryPropertyFlags properties);
+	static VkFormat FindSupportedFormat(const VkPhysicalDevice& physicalDevice, const std::vector<VkFormat>& vecFormat, const VkImageTiling& tiling, const VkFormatFeatureFlags& features);
+	static VkFormat FindDepthFormat(const VkPhysicalDevice& physicalDevice);
+	static bool HasStencilComponent(const VkFormat& format);
 };

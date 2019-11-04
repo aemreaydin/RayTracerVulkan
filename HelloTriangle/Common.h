@@ -13,6 +13,7 @@
 #include <array>
 
 #define GLM_FORCE_RADIANS
+#define GLM_FORCE_DEPTH_ZERO_TO_ONE
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
@@ -40,9 +41,9 @@ struct SVertex
 		return inputBindingDescription;
 	}
 
-	static std::array<VkVertexInputAttributeDescription, 2> GetInputAttributeDescriptions()
+	static std::array<VkVertexInputAttributeDescription, 3> GetInputAttributeDescriptions()
 	{
-		std::array<VkVertexInputAttributeDescription, 2> inputAttributeDescriptions = {};
+		std::array<VkVertexInputAttributeDescription, 3> inputAttributeDescriptions = {};
 
 		// Position
 		inputAttributeDescriptions[0].binding = 0;
@@ -55,11 +56,17 @@ struct SVertex
 		inputAttributeDescriptions[1].format = VK_FORMAT_R32G32B32A32_SFLOAT;
 		inputAttributeDescriptions[1].offset = offsetof(SVertex, Color);
 
+		inputAttributeDescriptions[2].binding = 0;
+		inputAttributeDescriptions[2].location = 2;
+		inputAttributeDescriptions[2].format = VK_FORMAT_R32G32_SFLOAT;
+		inputAttributeDescriptions[2].offset = offsetof(SVertex, Texture);
+
 		return inputAttributeDescriptions;
 	}
 
 	glm::vec4 Position;
 	glm::vec4 Color;
+	glm::vec2 Texture;
 };
 
 struct SUniformBufferObject
