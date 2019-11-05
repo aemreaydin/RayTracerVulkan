@@ -1,6 +1,7 @@
 #include "DebugHelpers.h"
 #include "SetupHelpers.h"
 #include "ShaderLoader.h"
+#include "ModelLoader.h"
 
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
@@ -10,6 +11,11 @@
 
 const int MAX_FRAMES_IN_FLIGHT = 2;
 
+#ifdef _MSC_VER
+#define _CRTDBG_MAP_ALLOC
+#include <cstdlib>
+#include <crtdbg.h>
+#endif
 
 class HelloTriangleApp
 {
@@ -43,6 +49,18 @@ private:
 		glfwSetFramebufferSizeCallback(pWindow, framebufferResizeCallback);
 	}
 
+	void createScene()
+	{
+		std::vector<SModelInformation> vecModelInformation;
+		CModelLoader::GetSceneHierarchy("Models/Scene.json", vecModelInformation);
+
+		for(const auto& model : vecModelInformation)
+		{
+			CModelLoader::LoadModel(model, vecVertices, vecIndices);
+			
+		}
+	}
+
 	void initVulkan()
 	{
 		createInstance();
@@ -62,9 +80,10 @@ private:
 		createCommandPool();
 		createDepthResources();
 		createFramebuffers();
-		createTextureImage();
+		createTextureImage("Models/Chalet/chalet.jpg");
 		createTextureImageView();
 		createTextureSampler();
+		createScene();
 		createVertexBuffer();
 		createIndexBuffer();
 		createUniformBuffers();
@@ -474,11 +493,13 @@ private:
 
 	void createGraphicsPipeline()
 	{
-		const auto vShader = CShaderLoader::ReadShader("Shaders/vShader.spv");
-		const auto fShader = CShaderLoader::ReadShader("Shaders/fShader.spv");
+		std::vector<char> vecVertShaderCode;
+		CShaderLoader::ReadShader("Shaders/vShader.spv", vecVertShaderCode);
+		std::vector<char> vecFragShaderCode;
+		CShaderLoader::ReadShader("Shaders/fShader.spv", vecFragShaderCode);
 
-		const auto vertShaderModule = createShaderModule(vShader);
-		const auto fragShaderModule = createShaderModule(fShader);
+		const auto vertShaderModule = createShaderModule(vecVertShaderCode);
+		const auto fragShaderModule = createShaderModule(vecFragShaderCode);
 
 		VkPipelineShaderStageCreateInfo vertShaderStageCreateInfo = {};
 		vertShaderStageCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
@@ -503,10 +524,6 @@ private:
 		// Vertex Input State
 		VkPipelineVertexInputStateCreateInfo vertexInputStateCreateInfo = {};
 		vertexInputStateCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-		vertexInputStateCreateInfo.vertexAttributeDescriptionCount = 0;
-		vertexInputStateCreateInfo.vertexBindingDescriptionCount = 0;
-		vertexInputStateCreateInfo.pVertexAttributeDescriptions = nullptr;
-		vertexInputStateCreateInfo.pVertexBindingDescriptions = nullptr;
 		vertexInputStateCreateInfo.vertexBindingDescriptionCount = 1;
 		vertexInputStateCreateInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size());
 		vertexInputStateCreateInfo.pVertexBindingDescriptions = &bindingDescription;
@@ -702,10 +719,10 @@ private:
 		}
 	}
 
-	void createTextureImage()
+	void createTextureImage(const std::string& textureDir)
 	{
 		int width, height, channels;
-		const auto pixels = stbi_load("Textures/texture.jpg", &width, &height, &channels, STBI_rgb_alpha);
+		const auto pixels = stbi_load(textureDir.c_str(), &width, &height, &channels, STBI_rgb_alpha);
 
 		const auto texSize = static_cast<unsigned long long>(width)* static_cast<unsigned long long>(height) * 4;
 
@@ -902,7 +919,7 @@ private:
 			VkBuffer vertexBuffers[] = {vertexBuffer};
 			VkDeviceSize offsets[] = {0};
 			vkCmdBindVertexBuffers(vecCommandBuffers[i], 0, 1, vertexBuffers, offsets);
-			vkCmdBindIndexBuffer(vecCommandBuffers[i], indexBuffer, 0, VK_INDEX_TYPE_UINT16);
+			vkCmdBindIndexBuffer(vecCommandBuffers[i], indexBuffer, 0, VK_INDEX_TYPE_UINT32);
 
 			vkCmdBindDescriptorSets(vecCommandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1,
 			                        &vecDescriptorSet[i], 0, nullptr);
@@ -1061,12 +1078,12 @@ private:
 			count();
 
 		SUniformBufferObject ubo = {};
-		ubo.Model = rotate(glm::mat4(1.0f), deltaTime * glm::radians(0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-		ubo.View = lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+		ubo.Model = glm::rotate(glm::mat4(1.0f), deltaTime * glm::radians(30.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+		ubo.View = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
 		ubo.Projection = glm::perspective(glm::radians(45.0f),
 		                                    swapChainExtent.width / static_cast<float>(swapChainExtent.height), 
-										  0.1f,
-		                                    10.f);
+											0.1f,
+		                                    100.f);
 		ubo.Projection[1][1] *= -1; // Y is inverted compared to OpenGL
 
 		void* data;
@@ -1464,21 +1481,8 @@ private:
 	std::vector<VkFence> vecInFlightFences;
 	size_t currentFrame = 0;
 	bool framebufferResized = false;
-	const std::vector<SVertex> vecVertices = {
-		{{0.5f, -0.5f, 0.0f, 1.0f}, {0.0f, 1.0f, 1.0f, 1.0f}, {1.0f, 0.0f}},
-		{{0.5f, 0.5f, 0.0f, 1.0f}, {1.0f, 0.0f, 1.0f, 1.0f}, {1.0f, 1.0f}},
-		{{-0.5f, 0.5f, 0.0f, 1.0f}, {1.0f, 1.0f, 0.0f, 1.0f}, {0.0f, 1.0f}},
-		{{-0.5f, -0.5f, 0.0f, 1.0f}, {0.0f, 0.0f, 1.0f, 1.0f}, {0.0f, 0.0f}},
-
-				{{0.5f, -0.5f, 0.5f, 1.0f}, {0.0f, 1.0f, 1.0f, 1.0f}, {1.0f, 0.0f}},
-		{{0.5f, 0.5f, 0.5f, 1.0f}, {1.0f, 0.0f, 1.0f, 1.0f}, {1.0f, 1.0f}},
-		{{-0.5f, 0.5f, 0.5f, 1.0f}, {1.0f, 1.0f, 0.0f, 1.0f}, {0.0f, 1.0f}},
-		{{-0.5f, -0.5f, 0.5f, 1.0f}, {0.0f, 0.0f, 1.0f, 1.0f}, {0.0f, 0.0f}},
-	};
-	const std::vector<uint16_t> vecIndices = {
-		0, 1, 2, 2, 3, 0,
-		4, 5, 6, 6, 7, 4
-	};
+	std::vector<SVertex> vecVertices;
+	std::vector<uint32_t> vecIndices;
 	VkImage textureImage = nullptr;
 	VkDeviceMemory textureImageMemory = nullptr;
 	VkImageView textureImageView = nullptr;
@@ -1496,6 +1500,10 @@ private:
 
 int main()
 {
+#ifdef _MSC_VER
+	_CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
+#endif
+	
 	HelloTriangleApp app;
 
 	try
