@@ -2,35 +2,61 @@
 #include "ModelLoader.h"
 
 
-IGameObject::IGameObject(SObjectInformation objectInfo)
+IGameObject::IGameObject(SObjectInformation objectInfo, STransform transform)
 {
 	mObjectInformation = std::move(objectInfo);
+	mTransform = transform;
 }
 
-//SVertex* IGameObject::GetVertexData()
-//{
-//	return mObjectInformation.ModelInformation.VecVertex.data();
-//}
-//
-//uint32_t* IGameObject::GetIndexData()
-//{
-//	return mObjectInformation.ModelInformation.VecIndex.data();
-//}
-
-size_t IGameObject::GetVertexBufferSize()
+VkBuffer& IGameObject::GetVertexBuffer() 
 {
-	return sizeof(SVertex) * mObjectInformation.ModelInformation.VecVertex.size();
+	return mModelInformation.VertexBuffer.Buffer;
 }
 
-size_t IGameObject::GetIndexBufferSize()
+VkBuffer& IGameObject::GetIndexBuffer()
 {
-	return sizeof(uint32_t) * mObjectInformation.ModelInformation.VecVertex.size();
+	return mModelInformation.IndexBuffer.Buffer;
 }
 
-CStaticGameObject::CStaticGameObject(SObjectInformation objectInfo)
-	: IGameObject(std::move(objectInfo))
+VkDeviceMemory& IGameObject::GetVertexBufferMemory()
 {
-	CModelLoader::LoadModel(mObjectInformation);
+	return mModelInformation.VertexBuffer.BufferMemory;
+}
+
+VkDeviceMemory& IGameObject::GetIndexBufferMemory()
+{
+	return mModelInformation.IndexBuffer.BufferMemory;
+}
+
+const SVertex* IGameObject::GetVertexData() const
+{
+	return mModelInformation.VecVertex.data();
+}
+
+const uint32_t* IGameObject::GetIndexData() const
+{
+	return mModelInformation.VecIndex.data();
+}
+
+size_t IGameObject::GetVertexBufferSize() const
+{
+	return sizeof(SVertex) * mModelInformation.VecVertex.size();
+}
+
+size_t IGameObject::GetIndexBufferSize() const
+{
+	return sizeof(uint32_t) * mModelInformation.VecVertex.size();
+}
+
+uint32_t IGameObject::GetIndexArraySize() const
+{
+	return static_cast<uint32_t>(mModelInformation.VecIndex.size());
+}
+
+CStaticGameObject::CStaticGameObject(SObjectInformation objectInfo, STransform transform)
+	: IGameObject(std::move(objectInfo), transform)
+{
+	CModelLoader::LoadModel(mObjectInformation, mModelInformation);
 }
 
 void CStaticGameObject::Update()

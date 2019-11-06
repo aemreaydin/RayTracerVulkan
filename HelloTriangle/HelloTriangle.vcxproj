@@ -177,6 +177,7 @@
     <ClInclude Include="ModelLoader.h" />
     <ClInclude Include="SetupHelpers.h" />
     <ClInclude Include="ShaderLoader.h" />
+    <ClInclude Include="TypeAliases.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

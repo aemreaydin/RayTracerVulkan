@@ -7,7 +7,7 @@
 class IGameObject
 {
 public:
-	explicit IGameObject(SObjectInformation);
+	explicit IGameObject(SObjectInformation, STransform);
 
 	virtual ~IGameObject() = default;	
 	IGameObject(const IGameObject&) = delete;
@@ -18,18 +18,33 @@ public:
 	virtual void Update() = 0;
 	virtual void Draw() = 0;
 
-	//[[nodiscard]] SVertex* GetVertexData();
-	//[[nodiscard]] uint32_t* GetIndexData();
-	virtual size_t GetVertexBufferSize();
-	virtual size_t GetIndexBufferSize();
-protected:
-	SObjectInformation mObjectInformation;	
+	[[nodiscard]] VkBuffer& GetVertexBuffer();
+	[[nodiscard]] VkBuffer& GetIndexBuffer();
+	[[nodiscard]] VkDeviceMemory& GetVertexBufferMemory();
+	[[nodiscard]] VkDeviceMemory& GetIndexBufferMemory();
+	[[nodiscard]] const SVertex* GetVertexData() const;
+	[[nodiscard]] const uint32_t* GetIndexData() const;
+	[[nodiscard]] size_t GetVertexBufferSize() const;
+	[[nodiscard]] size_t GetIndexBufferSize() const;
+	[[nodiscard]] uint32_t GetIndexArraySize() const;
+
+	void Cleanup(const VkDevice& device) const
+	{
+		vkDestroyBuffer(device, mModelInformation.VertexBuffer.Buffer, nullptr);
+		vkDestroyBuffer(device, mModelInformation.IndexBuffer.Buffer, nullptr);
+		vkFreeMemory(device, mModelInformation.VertexBuffer.BufferMemory, nullptr);
+		vkFreeMemory(device, mModelInformation.IndexBuffer.BufferMemory, nullptr);
+	}
+
+	STransform mTransform{};
+	SModelInformation mModelInformation;
+	SObjectInformation mObjectInformation;
 };
 
 class CStaticGameObject final : public IGameObject
 {
 public:
-	explicit CStaticGameObject(SObjectInformation objectInfo);
+	explicit CStaticGameObject(SObjectInformation, STransform);
 
 	void Update() override;
 	void Draw() override;

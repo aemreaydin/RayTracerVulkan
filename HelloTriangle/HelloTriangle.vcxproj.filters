@@ -56,5 +56,8 @@
     <ClInclude Include="CommonStructs.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="TypeAliases.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

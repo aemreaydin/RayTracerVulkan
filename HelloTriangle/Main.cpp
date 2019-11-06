@@ -3,6 +3,7 @@
 #include "ShaderLoader.h"
 #include "ModelLoader.h"
 #include "GameObject.h"
+#include "TypeAliases.h"
 
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
@@ -18,7 +19,7 @@ const int MAX_FRAMES_IN_FLIGHT = 2;
 #include <crtdbg.h>
 #endif
 
-std::unique_ptr<CStaticGameObject> upGameObject;
+
 
 class HelloTriangleApp
 {
@@ -54,15 +55,7 @@ private:
 
 	void createScene()
 	{
-		std::vector<SObjectInformation> vecObjectInformation;
-		CModelLoader::GetSceneHierarchy("Models/Scene.json", vecObjectInformation);
-
-		
-		for(const auto& model : vecObjectInformation)
-		{
-			CModelLoader::LoadModel(model, vecVertices, vecIndices);
-			upGameObject = std::make_unique<CStaticGameObject>(model);
-		}
+		CModelLoader::GetSceneHierarchy("Models/Scene.json", vecGameObject);
 	}
 
 	void initVulkan()
@@ -119,11 +112,13 @@ private:
 
 		vkDestroyDescriptorSetLayout(device, descriptorSetLayout, nullptr);
 
-		vkDestroyBuffer(device, indexBuffer, nullptr);
-		vkFreeMemory(device, indexBufferMemory, nullptr);
 
-		vkDestroyBuffer(device, vertexBuffer, nullptr);
-		vkFreeMemory(device, vertexBufferMemory, nullptr);
+		vecGameObject[0]->Cleanup(device);
+		//vkDestroyBuffer(device, indexBuffer, nullptr);
+		//vkFreeMemory(device, indexBufferMemory, nullptr);
+
+		//vkDestroyBuffer(device, vertexBuffer, nullptr);
+		//vkFreeMemory(device, vertexBufferMemory, nullptr);
 
 		auto index = 0;
 		for (auto& imageSemaphore : vecSemaphoreImageAvailable)
@@ -800,7 +795,7 @@ private:
 
 	void createVertexBuffer()
 	{
-		const auto bufferSize = sizeof(vecVertices[0]) * vecVertices.size();
+		const auto bufferSize = vecGameObject[0]->GetVertexBufferSize();
 
 		VkBuffer stagingBuffer;
 		VkDeviceMemory stagingBufferMemory;
@@ -812,16 +807,16 @@ private:
 
 		void* data;
 		vkMapMemory(device, stagingBufferMemory, 0, bufferSize, 0, &data);
-		std::memcpy(data, vecVertices.data(), bufferSize);
+		std::memcpy(data, vecGameObject[0]->GetVertexData(), bufferSize);
 		vkUnmapMemory(device, stagingBufferMemory);
 
 		createBuffer(bufferSize,
 		             VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
 		             VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-		             vertexBuffer,
-		             vertexBufferMemory);
+					 vecGameObject[0]->GetVertexBuffer(),
+					 vecGameObject[0]->GetVertexBufferMemory());
 
-		copyBuffer(stagingBuffer, vertexBuffer, bufferSize);
+		copyBuffer(stagingBuffer, vecGameObject[0]->GetVertexBuffer(), bufferSize);
 
 		// Cleanup staging buffer and memory
 		vkDestroyBuffer(device, stagingBuffer, nullptr);
@@ -830,7 +825,7 @@ private:
 
 	void createIndexBuffer()
 	{
-		const auto bufferSize = sizeof(vecIndices[0]) * vecIndices.size();
+		const auto bufferSize = vecGameObject[0]->GetIndexBufferSize();
 		VkBuffer stagingBuffer;
 		VkDeviceMemory stagingBufferMemory;
 		createBuffer(bufferSize,
@@ -841,16 +836,16 @@ private:
 
 		void* data;
 		vkMapMemory(device, stagingBufferMemory, 0, bufferSize, 0, &data);
-		std::memcpy(data, vecIndices.data(), bufferSize);
+		std::memcpy(data, vecGameObject[0]->GetIndexData(), bufferSize);
 		vkUnmapMemory(device, stagingBufferMemory);
 
 		createBuffer(bufferSize,
 		             VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
 		             VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-		             indexBuffer,
-		             indexBufferMemory);
+					 vecGameObject[0]->GetIndexBuffer(),
+					 vecGameObject[0]->GetIndexBufferMemory());
 
-		copyBuffer(stagingBuffer, indexBuffer, bufferSize);
+		copyBuffer(stagingBuffer, vecGameObject[0]->GetIndexBuffer(), bufferSize);
 
 		vkDestroyBuffer(device, stagingBuffer, nullptr);
 		vkFreeMemory(device, stagingBufferMemory, nullptr);
@@ -915,15 +910,15 @@ private:
 			// Bind the Graphics Pipeline
 			vkCmdBindPipeline(vecCommandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
 			// Draw
-			VkBuffer vertexBuffers[] = {vertexBuffer};
+			VkBuffer vertexBuffers[] = { vecGameObject[0]->GetVertexBuffer() };
 			VkDeviceSize offsets[] = {0};
 			vkCmdBindVertexBuffers(vecCommandBuffers[i], 0, 1, vertexBuffers, offsets);
-			vkCmdBindIndexBuffer(vecCommandBuffers[i], indexBuffer, 0, VK_INDEX_TYPE_UINT32);
+			vkCmdBindIndexBuffer(vecCommandBuffers[i], vecGameObject[0]->GetIndexBuffer(), 0, VK_INDEX_TYPE_UINT32);
 
 			vkCmdBindDescriptorSets(vecCommandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1,
 			                        &vecDescriptorSet[i], 0, nullptr);
 			// Now using indices to draw
-			vkCmdDrawIndexed(vecCommandBuffers[i], static_cast<uint32_t>(vecIndices.size()), 1, 0, 0, 0);
+			vkCmdDrawIndexed(vecCommandBuffers[i], vecGameObject[0]->GetIndexArraySize(), 1, 0, 0, 0);
 			//vkCmdDraw(commandBuffer, vecVertices.size(), 1, 0, 0);
 			// End Render Pass
 			vkCmdEndRenderPass(vecCommandBuffers[i]);
@@ -1077,7 +1072,13 @@ private:
 			count();
 
 		SUniformBufferObject ubo = {};
-		ubo.Model = glm::rotate(glm::mat4(1.0f), deltaTime * glm::radians(30.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+		ubo.Model = glm::mat4(1.0f);
+		
+		const auto scale = glm::scale(glm::mat4(1.0f), vecGameObject[0]->mTransform.Scale);
+		const auto rotationX = glm::rotate(glm::mat4(1.0f), deltaTime * glm::radians(vecGameObject[0]->mTransform.Rotation.x), glm::vec3(1.0f, 0.0f, 0.0f));
+		const auto rotationY = glm::rotate(glm::mat4(1.0f), deltaTime * glm::radians(vecGameObject[0]->mTransform.Rotation.y), glm::vec3(0.0f, 1.0f, 0.0f));
+		const auto rotationZ = glm::rotate(glm::mat4(1.0f), deltaTime * glm::radians(vecGameObject[0]->mTransform.Rotation.z), glm::vec3(0.0f, 0.0f, 1.0f));
+		ubo.Model = rotationX * rotationY * rotationZ * scale * ubo.Model;
 		ubo.View = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
 		ubo.Projection = glm::perspective(glm::radians(45.0f),
 		                                    swapChainExtent.width / static_cast<float>(swapChainExtent.height), 
@@ -1486,15 +1487,17 @@ private:
 	VkDeviceMemory textureImageMemory = nullptr;
 	VkImageView textureImageView = nullptr;
 	VkSampler textureSampler = nullptr;
-	VkBuffer vertexBuffer = nullptr;
+	/*VkBuffer vertexBuffer = nullptr;
 	VkDeviceMemory vertexBufferMemory = nullptr;
 	VkBuffer indexBuffer = nullptr;
-	VkDeviceMemory indexBufferMemory = nullptr;
+	VkDeviceMemory indexBufferMemory = nullptr;*/
 	VkImage depthImage = nullptr;
 	VkDeviceMemory depthImageMemory = nullptr;
 	VkImageView depthImageView = nullptr;
 	std::vector<VkBuffer> vecUniformBuffer;
 	std::vector<VkDeviceMemory> vecUniformBufferMemory;
+
+	GameObjectVecPtrs vecGameObject;
 };
 
 int main()

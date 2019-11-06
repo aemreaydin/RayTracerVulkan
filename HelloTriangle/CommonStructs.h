@@ -8,6 +8,11 @@
 
 struct STransform
 {
+	STransform() = default;
+	STransform(const glm::vec3 position, 
+			   const glm::vec3 rotation, 
+			   const glm::vec3 scale) :
+		Position(position), Rotation(rotation), Scale(scale) { }
 	glm::vec3 Position;
 	glm::vec3 Rotation;
 	glm::vec3 Scale;
@@ -53,17 +58,28 @@ struct SVertex
 	glm::vec2 TextureCoords;
 };
 
+struct SBuffer
+{
+	VkBuffer Buffer = nullptr;
+	VkDeviceMemory BufferMemory = nullptr;
+};
+
 struct SModelInformation
 {
 	std::vector<SVertex> VecVertex;
 	std::vector<uint32_t> VecIndex;
+	SBuffer VertexBuffer;
+	SBuffer IndexBuffer;
 };
 
 struct SObjectInformation
 {
-	explicit SObjectInformation()
-		: Filename(""), Transform(STransform()){ }
-	std::string Filename;
-	STransform Transform;
-	SModelInformation ModelInformation;
+	SObjectInformation() = default;
+	SObjectInformation(std::string fileName, std::string objectname)
+	{
+		FileName = std::move(fileName);
+		ObjectName = std::move(objectname);
+	}
+	std::string FileName;
+	std::string ObjectName;
 };

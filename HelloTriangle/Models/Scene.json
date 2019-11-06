@@ -1,10 +1,11 @@
 {
     "Scene": [{
+        "Name": "Chalet",
         "Filename": "Models/Chalet/chalet.obj",
-        "Position": {
-            "X": 0.0,
-            "Y": 0.0,
-            "Z": 0.0
+        "Transform": {
+            "Position": [0.0, 0.0, 0.0],
+            "Rotation": [15.0, 25.0, 0.0],
+            "Scale": [0.25, 0.25, 0.25]
         }
     }]
 }
