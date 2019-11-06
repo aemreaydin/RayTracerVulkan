@@ -2,6 +2,7 @@
 #include "SetupHelpers.h"
 #include "ShaderLoader.h"
 #include "ModelLoader.h"
+#include "GameObject.h"
 
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
@@ -16,6 +17,8 @@ const int MAX_FRAMES_IN_FLIGHT = 2;
 #include <cstdlib>
 #include <crtdbg.h>
 #endif
+
+std::unique_ptr<CStaticGameObject> upGameObject;
 
 class HelloTriangleApp
 {
@@ -51,13 +54,14 @@ private:
 
 	void createScene()
 	{
-		std::vector<SModelInformation> vecModelInformation;
-		CModelLoader::GetSceneHierarchy("Models/Scene.json", vecModelInformation);
+		std::vector<SObjectInformation> vecObjectInformation;
+		CModelLoader::GetSceneHierarchy("Models/Scene.json", vecObjectInformation);
 
-		for(const auto& model : vecModelInformation)
+		
+		for(const auto& model : vecObjectInformation)
 		{
 			CModelLoader::LoadModel(model, vecVertices, vecIndices);
-			
+			upGameObject = std::make_unique<CStaticGameObject>(model);
 		}
 	}
 
@@ -69,6 +73,7 @@ private:
 			CDebugHelpers::SetupDebugMessenger(instance, nullptr, &debugMessenger);
 		}
 		// Create the surface before the physical device
+		createScene();
 		createSurface();
 		pickPhysicalDevice();
 		createLogicalDevice();
@@ -83,7 +88,6 @@ private:
 		createTextureImage("Models/Chalet/chalet.jpg");
 		createTextureImageView();
 		createTextureSampler();
-		createScene();
 		createVertexBuffer();
 		createIndexBuffer();
 		createUniformBuffers();
@@ -413,11 +417,6 @@ private:
 		colorAttachmentRef.attachment = 0;
 		colorAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
-		VkSubpassDescription colorSubpassDescription = {};
-		colorSubpassDescription.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-		colorSubpassDescription.colorAttachmentCount = 1;
-		colorSubpassDescription.pColorAttachments = &colorAttachmentRef;
-
 		VkAttachmentDescription depthAttachment = {};
 		depthAttachment.format = CSetupHelpers::FindDepthFormat(physicalDevice);
 		depthAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
@@ -432,11 +431,11 @@ private:
 		depthAttachmentRef.attachment = 1;
 		depthAttachmentRef.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
-		VkSubpassDescription depthSubpassDescription = {};
-		depthSubpassDescription.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-		depthSubpassDescription.colorAttachmentCount = 1;
-		depthSubpassDescription.pColorAttachments = &colorAttachmentRef;
-		depthSubpassDescription.pDepthStencilAttachment = &depthAttachmentRef;
+		VkSubpassDescription subpassDescription = {};
+		subpassDescription.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+		subpassDescription.colorAttachmentCount = 1;
+		subpassDescription.pColorAttachments = &colorAttachmentRef;
+		subpassDescription.pDepthStencilAttachment = &depthAttachmentRef;
 
 		VkSubpassDependency subpassDependency = {};
 		subpassDependency.srcSubpass = VK_SUBPASS_EXTERNAL;
@@ -453,7 +452,7 @@ private:
 		renderPassCreateInfo.attachmentCount = static_cast<uint32_t>(arrAttachmentDescription.size());
 		renderPassCreateInfo.pAttachments = arrAttachmentDescription.data();
 		renderPassCreateInfo.subpassCount = 1;
-		renderPassCreateInfo.pSubpasses = &colorSubpassDescription;
+		renderPassCreateInfo.pSubpasses = &subpassDescription;
 		renderPassCreateInfo.dependencyCount = 1;
 		renderPassCreateInfo.pDependencies = &subpassDependency;
 

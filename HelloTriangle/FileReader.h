@@ -25,9 +25,9 @@ public:
 	}
 	~CFileReader() = default;
 	CFileReader(const CFileReader&) = delete;
-	CFileReader operator=(const CFileReader&) = delete;
+	CFileReader& operator=(const CFileReader&) = delete;
 	CFileReader(CFileReader&&) = delete;
-	CFileReader operator=(CFileReader&&) = delete;
+	CFileReader& operator=(CFileReader&&) = delete;
 private:
 	std::ifstream readStream;
 };

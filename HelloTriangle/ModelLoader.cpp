@@ -1,4 +1,5 @@
 ﻿#include "Common.h"
+#include "CommonStructs.h"
 #include "ModelLoader.h"
 #include "FileReader.h"
 
@@ -11,7 +12,7 @@ using namespace rapidjson;
 #include <unordered_map>
 
 
-void CModelLoader::GetSceneHierarchy(const char* filename, std::vector<SModelInformation>& outVecModelInformation)
+void CModelLoader::GetSceneHierarchy(const char* filename, std::vector<SObjectInformation>& outVecModelInformation)
 {
 	CFileReader fileReader(filename);
 	std::vector<char> out;
@@ -34,11 +35,11 @@ void CModelLoader::GetSceneHierarchy(const char* filename, std::vector<SModelInf
 		const auto posZ = position["Z"].GetFloat();
 
 		outVecModelInformation[index].Filename = file;
-		outVecModelInformation[index].Position = glm::vec4(posX, posY, posZ, 1.0f);
+		outVecModelInformation[index].Transform.Position = glm::vec4(posX, posY, posZ, 1.0f);
 	}
 }
 
-void CModelLoader::LoadModel(const SModelInformation& modelInformation, 
+void CModelLoader::LoadModel(const SObjectInformation& modelInformation,
 							 std::vector<SVertex>& outVecVertex, 
 							 std::vector<uint32_t>& outVecIndex)
 {
@@ -74,6 +75,44 @@ void CModelLoader::LoadModel(const SModelInformation& modelInformation,
 			
 			outVecVertex.push_back(vertex);
 			outVecIndex.push_back(static_cast<uint32_t>(outVecIndex.size()));
+		}
+	}
+}
+
+void CModelLoader::LoadModel(SObjectInformation& objectInformation)
+{
+	tinyobj::attrib_t attrib;
+	std::vector<tinyobj::shape_t> vecShape;
+	std::vector<tinyobj::material_t> vecMaterial;
+	std::string warn, error;
+
+
+	const auto result = tinyobj::LoadObj(&attrib, &vecShape, &vecMaterial, &warn, &error, objectInformation.Filename.c_str());
+
+	if (!warn.empty())
+		std::cout << warn << std::endl;
+	if (!error.empty())
+		std::cout << error << std::endl;
+	if (!result)
+		throw std::runtime_error("Failed to load the object");
+
+
+	objectInformation.ModelInformation.VecVertex.reserve(attrib.GetVertices().size());
+	// TODO: Find a better way to do the loading
+	for (const auto& shape : vecShape)
+	{
+		for (const auto& index : shape.mesh.indices)
+		{
+			SVertex vertex = {};
+			vertex.Position.x = attrib.vertices[3 * index.vertex_index + 0];
+			vertex.Position.y = attrib.vertices[3 * index.vertex_index + 1];
+			vertex.Position.z = attrib.vertices[3 * index.vertex_index + 2];
+
+			vertex.TextureCoords.x = attrib.texcoords[2 * index.texcoord_index + 0];
+			vertex.TextureCoords.y = 1.0f - attrib.texcoords[2 * index.texcoord_index + 1];
+
+			objectInformation.ModelInformation.VecVertex.push_back(vertex);
+			objectInformation.ModelInformation.VecIndex.push_back(static_cast<uint32_t>(objectInformation.ModelInformation.VecIndex.size()));
 		}
 	}
 }

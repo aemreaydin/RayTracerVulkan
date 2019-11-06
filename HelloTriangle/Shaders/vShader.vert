@@ -8,11 +8,14 @@ layout(binding=0) uniform UniformBufferObject {
 } ubo;
 
 layout(location=0) in vec3 position;
-layout(location=1) in vec2 texCoords;
+layout(location=1) in vec3 normal;
+layout(location=2) in vec2 texCoords;
 
+layout(location=0) out vec3 fragNormals;
 layout(location=1) out vec2 fragTexCoords;
 
 void main() {
 	gl_Position = ubo.projection * ubo.view * ubo.model * vec4(position, 1.0f);
+	fragNormals = normal;
 	fragTexCoords = texCoords;
 }
