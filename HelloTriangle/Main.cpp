@@ -1,9 +1,10 @@
+#include "TypeAliases.h"
 #include "DebugHelpers.h"
 #include "SetupHelpers.h"
+#include "BufferManager.h"
 #include "ShaderLoader.h"
 #include "ModelLoader.h"
 #include "GameObject.h"
-#include "TypeAliases.h"
 
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
@@ -18,7 +19,6 @@ const int MAX_FRAMES_IN_FLIGHT = 2;
 #include <cstdlib>
 #include <crtdbg.h>
 #endif
-
 
 
 class HelloTriangleApp
@@ -56,6 +56,12 @@ private:
 	void createScene()
 	{
 		CModelLoader::GetSceneHierarchy("Models/Scene.json", vecGameObject);
+		for(auto& gameObject : vecGameObject)
+		{
+			CModelLoader::LoadModel(gameObject->mObjectInformation, gameObject->mModelInformation);
+			CBufferManager::CreateVertexBuffer(device, physicalDevice, transferQueue, vecCommandPools[1], gameObject);
+			CBufferManager::CreateIndexBuffer(device, physicalDevice, transferQueue, vecCommandPools[1], gameObject);
+		}
 	}
 
 	void initVulkan()
@@ -66,7 +72,6 @@ private:
 			CDebugHelpers::SetupDebugMessenger(instance, nullptr, &debugMessenger);
 		}
 		// Create the surface before the physical device
-		createScene();
 		createSurface();
 		pickPhysicalDevice();
 		createLogicalDevice();
@@ -76,13 +81,12 @@ private:
 		createDescriptorSetLayout();
 		createGraphicsPipeline();
 		createCommandPool();
+		createScene();
 		createDepthResources();
 		createFramebuffers();
 		createTextureImage("Models/Chalet/chalet.jpg");
 		createTextureImageView();
 		createTextureSampler();
-		createVertexBuffer();
-		createIndexBuffer();
 		createUniformBuffers();
 		createDescriptorPool();
 		createDescriptorSets();
@@ -113,7 +117,10 @@ private:
 		vkDestroyDescriptorSetLayout(device, descriptorSetLayout, nullptr);
 
 
-		vecGameObject[0]->Cleanup(device);
+		for(auto& gameObject : vecGameObject)
+		{
+			gameObject->Cleanup(device);			
+		}
 		//vkDestroyBuffer(device, indexBuffer, nullptr);
 		//vkFreeMemory(device, indexBufferMemory, nullptr);
 
@@ -391,7 +398,8 @@ private:
 		vecSwapChainImageViews.resize(vecSwapChainImages.size());
 		for (size_t i = 0; i != vecSwapChainImages.size(); ++i)
 		{
-			vecSwapChainImageViews[i] = createImageView(vecSwapChainImages[i], swapChainImageFormat, VK_IMAGE_ASPECT_COLOR_BIT);
+			vecSwapChainImageViews[i] = createImageView(vecSwapChainImages[i], swapChainImageFormat,
+			                                            VK_IMAGE_ASPECT_COLOR_BIT);
 		}
 	}
 
@@ -440,7 +448,7 @@ private:
 		subpassDependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
 		subpassDependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
 
-		std::array<VkAttachmentDescription, 2> arrAttachmentDescription = { colorAttachment, depthAttachment };
+		std::array<VkAttachmentDescription, 2> arrAttachmentDescription = {colorAttachment, depthAttachment};
 
 		VkRenderPassCreateInfo renderPassCreateInfo = {};
 		renderPassCreateInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
@@ -470,10 +478,10 @@ private:
 		samplerBinding.descriptorCount = 1;
 		samplerBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
 		samplerBinding.pImmutableSamplers = nullptr;
-		samplerBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;		
+		samplerBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 
-		std::array<VkDescriptorSetLayoutBinding, 2> bindings = { uboLayoutBinding, samplerBinding };
-		
+		std::array<VkDescriptorSetLayoutBinding, 2> bindings = {uboLayoutBinding, samplerBinding};
+
 		VkDescriptorSetLayoutCreateInfo layoutCreateInfo = {};
 		layoutCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
 		layoutCreateInfo.bindingCount = static_cast<uint32_t>(bindings.size());
@@ -519,7 +527,8 @@ private:
 		VkPipelineVertexInputStateCreateInfo vertexInputStateCreateInfo = {};
 		vertexInputStateCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
 		vertexInputStateCreateInfo.vertexBindingDescriptionCount = 1;
-		vertexInputStateCreateInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size());
+		vertexInputStateCreateInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size()
+		);
 		vertexInputStateCreateInfo.pVertexBindingDescriptions = &bindingDescription;
 		vertexInputStateCreateInfo.pVertexAttributeDescriptions = attributeDescriptions.data();
 
@@ -718,7 +727,7 @@ private:
 		int width, height, channels;
 		const auto pixels = stbi_load(textureDir.c_str(), &width, &height, &channels, STBI_rgb_alpha);
 
-		const auto texSize = static_cast<unsigned long long>(width)* static_cast<unsigned long long>(height) * 4;
+		const auto texSize = static_cast<unsigned long long>(width) * static_cast<unsigned long long>(height) * 4;
 
 		if (!pixels)
 		{
@@ -787,15 +796,15 @@ private:
 		createInfo.minLod = 0.0f;
 		createInfo.maxLod = 0.0f;
 
-		if(vkCreateSampler(device, &createInfo, nullptr, &textureSampler) != VK_SUCCESS)
+		if (vkCreateSampler(device, &createInfo, nullptr, &textureSampler) != VK_SUCCESS)
 		{
 			throw std::runtime_error("Failed to create the sampler.");
 		}
 	}
 
-	void createVertexBuffer()
+	void createVertexBuffer(GameObjectUPtr& gameObject)
 	{
-		const auto bufferSize = vecGameObject[0]->GetVertexBufferSize();
+		const auto bufferSize = gameObject->GetVertexBufferSize();
 
 		VkBuffer stagingBuffer;
 		VkDeviceMemory stagingBufferMemory;
@@ -807,25 +816,25 @@ private:
 
 		void* data;
 		vkMapMemory(device, stagingBufferMemory, 0, bufferSize, 0, &data);
-		std::memcpy(data, vecGameObject[0]->GetVertexData(), bufferSize);
+		std::memcpy(data, gameObject->GetVertexData(), bufferSize);
 		vkUnmapMemory(device, stagingBufferMemory);
 
 		createBuffer(bufferSize,
 		             VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
 		             VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-					 vecGameObject[0]->GetVertexBuffer(),
-					 vecGameObject[0]->GetVertexBufferMemory());
+		             gameObject->GetVertexBuffer(),
+		             gameObject->GetVertexBufferMemory());
 
-		copyBuffer(stagingBuffer, vecGameObject[0]->GetVertexBuffer(), bufferSize);
+		copyBuffer(stagingBuffer, gameObject->GetVertexBuffer(), bufferSize);
 
 		// Cleanup staging buffer and memory
 		vkDestroyBuffer(device, stagingBuffer, nullptr);
 		vkFreeMemory(device, stagingBufferMemory, nullptr);
 	}
 
-	void createIndexBuffer()
+	void createIndexBuffer(GameObjectUPtr& gameObject)
 	{
-		const auto bufferSize = vecGameObject[0]->GetIndexBufferSize();
+		const auto bufferSize = gameObject->GetIndexBufferSize();
 		VkBuffer stagingBuffer;
 		VkDeviceMemory stagingBufferMemory;
 		createBuffer(bufferSize,
@@ -836,16 +845,16 @@ private:
 
 		void* data;
 		vkMapMemory(device, stagingBufferMemory, 0, bufferSize, 0, &data);
-		std::memcpy(data, vecGameObject[0]->GetIndexData(), bufferSize);
+		std::memcpy(data, gameObject->GetIndexData(), bufferSize);
 		vkUnmapMemory(device, stagingBufferMemory);
 
 		createBuffer(bufferSize,
 		             VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
 		             VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-					 vecGameObject[0]->GetIndexBuffer(),
-					 vecGameObject[0]->GetIndexBufferMemory());
+		             gameObject->GetIndexBuffer(),
+		             gameObject->GetIndexBufferMemory());
 
-		copyBuffer(stagingBuffer, vecGameObject[0]->GetIndexBuffer(), bufferSize);
+		copyBuffer(stagingBuffer, gameObject->GetIndexBuffer(), bufferSize);
 
 		vkDestroyBuffer(device, stagingBuffer, nullptr);
 		vkFreeMemory(device, stagingBufferMemory, nullptr);
@@ -856,16 +865,28 @@ private:
 		const auto depthFormat = CSetupHelpers::FindDepthFormat(physicalDevice);
 
 		createImage(swapChainExtent.width,
-					swapChainExtent.height,
-					depthFormat,
-					VK_IMAGE_TILING_OPTIMAL,
-					VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
-					VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, depthImage, 
-					depthImageMemory);
+		            swapChainExtent.height,
+		            depthFormat,
+		            VK_IMAGE_TILING_OPTIMAL,
+		            VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
+		            VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, depthImage,
+		            depthImageMemory);
 
 		depthImageView = createImageView(depthImage, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT);
 
 		//transitionImageLayout(depthImage, depthFormat, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+	}
+
+	void createBuffersForGameObjects()
+	{
+		for(auto& gameObject : vecGameObject)
+		{
+			createVertexBuffer(gameObject);
+		}
+		for (auto& gameObject : vecGameObject)
+		{
+			createIndexBuffer(gameObject);
+		}
 	}
 
 	void createCommandBuffers()
@@ -884,9 +905,9 @@ private:
 		}
 
 		std::array<VkClearValue, 2> arrClearValue = {};
-		arrClearValue[0].color = { 0.0f, 0.0f, 0.0f, 1.0f };
-		arrClearValue[1].depthStencil = { 1.0f, 0 };
-		
+		arrClearValue[0].color = {0.0f, 0.0f, 0.0f, 1.0f};
+		arrClearValue[1].depthStencil = {1.0f, 0};
+
 		for (size_t i = 0; i != vecCommandBuffers.size(); ++i)
 		{
 			VkCommandBufferBeginInfo commandBufferBeginInfo = {};
@@ -910,15 +931,18 @@ private:
 			// Bind the Graphics Pipeline
 			vkCmdBindPipeline(vecCommandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
 			// Draw
-			VkBuffer vertexBuffers[] = { vecGameObject[0]->GetVertexBuffer() };
-			VkDeviceSize offsets[] = {0};
-			vkCmdBindVertexBuffers(vecCommandBuffers[i], 0, 1, vertexBuffers, offsets);
-			vkCmdBindIndexBuffer(vecCommandBuffers[i], vecGameObject[0]->GetIndexBuffer(), 0, VK_INDEX_TYPE_UINT32);
+			for(const auto& gameObject : vecGameObject)
+			{				
+				VkBuffer vertexBuffers[] = {gameObject->GetVertexBuffer()};
+				VkDeviceSize offsets[] = {0};
+				vkCmdBindVertexBuffers(vecCommandBuffers[i], 0, 1, vertexBuffers, offsets);
+				vkCmdBindIndexBuffer(vecCommandBuffers[i], gameObject->GetIndexBuffer(), 0, VK_INDEX_TYPE_UINT32);
 
-			vkCmdBindDescriptorSets(vecCommandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1,
-			                        &vecDescriptorSet[i], 0, nullptr);
-			// Now using indices to draw
-			vkCmdDrawIndexed(vecCommandBuffers[i], vecGameObject[0]->GetIndexArraySize(), 1, 0, 0, 0);
+				vkCmdBindDescriptorSets(vecCommandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1,
+				                        &vecDescriptorSet[i], 0, nullptr);
+				// Now using indices to draw
+				vkCmdDrawIndexed(vecCommandBuffers[i], gameObject->GetIndexArraySize(), 1, 0, 0, 0);
+			}
 			//vkCmdDraw(commandBuffer, vecVertices.size(), 1, 0, 0);
 			// End Render Pass
 			vkCmdEndRenderPass(vecCommandBuffers[i]);
@@ -1035,12 +1059,14 @@ private:
 			vecWriteDescriptorSet[1].dstBinding = 1;
 			vecWriteDescriptorSet[1].dstArrayElement = 0;
 			vecWriteDescriptorSet[1].pImageInfo = &imageInfo;
-			
-			vkUpdateDescriptorSets(device, static_cast<uint32_t>(vecWriteDescriptorSet.size()), vecWriteDescriptorSet.data(), 0, nullptr);
+
+			vkUpdateDescriptorSets(device, static_cast<uint32_t>(vecWriteDescriptorSet.size()),
+			                       vecWriteDescriptorSet.data(), 0, nullptr);
 		}
 	}
 
-	[[nodiscard]] VkImageView createImageView(const VkImage image, const VkFormat& format, const VkImageAspectFlags aspectFlags) const
+	[[nodiscard]] VkImageView createImageView(const VkImage image, const VkFormat& format,
+	                                          const VkImageAspectFlags aspectFlags) const
 	{
 		VkImageViewCreateInfo imageViewCreateInfo = {};
 		imageViewCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
@@ -1073,17 +1099,23 @@ private:
 
 		SUniformBufferObject ubo = {};
 		ubo.Model = glm::mat4(1.0f);
-		
+
 		const auto scale = glm::scale(glm::mat4(1.0f), vecGameObject[0]->mTransform.Scale);
-		const auto rotationX = glm::rotate(glm::mat4(1.0f), deltaTime * glm::radians(vecGameObject[0]->mTransform.Rotation.x), glm::vec3(1.0f, 0.0f, 0.0f));
-		const auto rotationY = glm::rotate(glm::mat4(1.0f), deltaTime * glm::radians(vecGameObject[0]->mTransform.Rotation.y), glm::vec3(0.0f, 1.0f, 0.0f));
-		const auto rotationZ = glm::rotate(glm::mat4(1.0f), deltaTime * glm::radians(vecGameObject[0]->mTransform.Rotation.z), glm::vec3(0.0f, 0.0f, 1.0f));
+		const auto rotationX = glm::rotate(glm::mat4(1.0f),
+		                                   deltaTime * glm::radians(vecGameObject[0]->mTransform.Rotation.x),
+		                                   glm::vec3(1.0f, 0.0f, 0.0f));
+		const auto rotationY = glm::rotate(glm::mat4(1.0f),
+		                                   deltaTime * glm::radians(vecGameObject[0]->mTransform.Rotation.y),
+		                                   glm::vec3(0.0f, 1.0f, 0.0f));
+		const auto rotationZ = glm::rotate(glm::mat4(1.0f),
+		                                   deltaTime * glm::radians(vecGameObject[0]->mTransform.Rotation.z),
+		                                   glm::vec3(0.0f, 0.0f, 1.0f));
 		ubo.Model = rotationX * rotationY * rotationZ * scale * ubo.Model;
 		ubo.View = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
 		ubo.Projection = glm::perspective(glm::radians(45.0f),
-		                                    swapChainExtent.width / static_cast<float>(swapChainExtent.height), 
-											0.1f,
-		                                    100.f);
+		                                  swapChainExtent.width / static_cast<float>(swapChainExtent.height),
+		                                  0.1f,
+		                                  100.f);
 		ubo.Projection[1][1] *= -1; // Y is inverted compared to OpenGL
 
 		void* data;
@@ -1326,7 +1358,7 @@ private:
 		VkPipelineStageFlags sourceStage;
 		VkPipelineStageFlags destinationStage;
 
-		if (oldLayout == VK_IMAGE_LAYOUT_UNDEFINED && 
+		if (oldLayout == VK_IMAGE_LAYOUT_UNDEFINED &&
 			newLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)
 		{
 			memoryBarrier.srcAccessMask = 0;
@@ -1335,8 +1367,8 @@ private:
 			sourceStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
 			destinationStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
 		}
-		else if (oldLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL && 
-				 newLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+		else if (oldLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL &&
+			newLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
 		{
 			memoryBarrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
 			memoryBarrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
@@ -1344,11 +1376,12 @@ private:
 			sourceStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
 			destinationStage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
 		}
-		else if (oldLayout == VK_IMAGE_LAYOUT_UNDEFINED && 
-				 newLayout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
+		else if (oldLayout == VK_IMAGE_LAYOUT_UNDEFINED &&
+			newLayout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
 		{
 			memoryBarrier.srcAccessMask = 0;
-			memoryBarrier.dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+			memoryBarrier.dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT |
+				VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
 
 			sourceStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
 			destinationStage = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
@@ -1505,7 +1538,7 @@ int main()
 #ifdef _MSC_VER
 	_CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
 #endif
-	
+
 	HelloTriangleApp app;
 
 	try

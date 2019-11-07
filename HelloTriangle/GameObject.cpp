@@ -56,7 +56,6 @@ uint32_t IGameObject::GetIndexArraySize() const
 CStaticGameObject::CStaticGameObject(SObjectInformation objectInfo, STransform transform)
 	: IGameObject(std::move(objectInfo), transform)
 {
-	CModelLoader::LoadModel(mObjectInformation, mModelInformation);
 }
 
 void CStaticGameObject::Update()

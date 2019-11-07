@@ -32,8 +32,10 @@ public:
 	{
 		vkDestroyBuffer(device, mModelInformation.VertexBuffer.Buffer, nullptr);
 		vkDestroyBuffer(device, mModelInformation.IndexBuffer.Buffer, nullptr);
+		vkDestroyBuffer(device, mModelInformation.UniformBuffer.Buffer, nullptr);
 		vkFreeMemory(device, mModelInformation.VertexBuffer.BufferMemory, nullptr);
 		vkFreeMemory(device, mModelInformation.IndexBuffer.BufferMemory, nullptr);
+		vkFreeMemory(device, mModelInformation.UniformBuffer.BufferMemory, nullptr);
 	}
 
 	STransform mTransform{};

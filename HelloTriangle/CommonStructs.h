@@ -70,6 +70,7 @@ struct SModelInformation
 	std::vector<uint32_t> VecIndex;
 	SBuffer VertexBuffer;
 	SBuffer IndexBuffer;
+	SBuffer UniformBuffer;
 };
 
 struct SObjectInformation

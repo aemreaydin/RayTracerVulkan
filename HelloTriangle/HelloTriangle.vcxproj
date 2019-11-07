@@ -162,6 +162,8 @@
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="BufferManager.cpp" />
+    <ClCompile Include="CommandBufferManager.cpp" />
     <ClCompile Include="DebugHelpers.cpp" />
     <ClCompile Include="GameObject.cpp" />
     <ClCompile Include="Main.cpp" />
@@ -169,6 +171,8 @@
     <ClCompile Include="SetupHelpers.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="BufferManager.h" />
+    <ClInclude Include="CommandBufferManager.h" />
     <ClInclude Include="Common.h" />
     <ClInclude Include="CommonStructs.h" />
     <ClInclude Include="DebugHelpers.h" />

@@ -1,11 +1,48 @@
 {
     "Scene": [{
-        "Name": "Chalet",
-        "Filename": "Models/Chalet/chalet.obj",
-        "Transform": {
-            "Position": [0.0, 0.0, 0.0],
-            "Rotation": [15.0, 25.0, 0.0],
-            "Scale": [0.25, 0.25, 0.25]
+            "Name": "Chalet",
+            "Filename": "Models/Chalet/chalet.obj",
+            "Transform": {
+                "Position": [10.0, 0.0, 0.0],
+                "Rotation": [15.0, 25.0, 0.0],
+                "Scale": [0.25, 0.25, 0.25]
+            }
+        },
+        {
+            "Name": "Chalet",
+            "Filename": "Models/Chalet/chalet.obj",
+            "Transform": {
+                "Position": [0.0, 10.0, 0.0],
+                "Rotation": [15.0, 25.0, 0.0],
+                "Scale": [0.25, 0.25, 0.25]
+            }
+        },
+        {
+            "Name": "Chalet",
+            "Filename": "Models/Chalet/chalet.obj",
+            "Transform": {
+                "Position": [0.0, 0.0, 10.0],
+                "Rotation": [15.0, 25.0, 0.0],
+                "Scale": [0.25, 0.25, 0.25]
+            }
+        },
+        {
+            "Name": "Chalet",
+            "Filename": "Models/Chalet/chalet.obj",
+            "Transform": {
+                "Position": [10.0, 10.0, 0.0],
+                "Rotation": [15.0, 25.0, 0.0],
+                "Scale": [0.25, 0.25, 0.25]
+            }
+        },
+        {
+            "Name": "Chalet",
+            "Filename": "Models/Chalet/chalet.obj",
+            "Transform": {
+                "Position": [0.0, 10.0, 10.0],
+                "Rotation": [15.0, 25.0, 0.0],
+                "Scale": [0.55, 0.25, 0.25]
+            }
         }
-    }]
+    ]
 }
